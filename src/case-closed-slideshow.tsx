@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Search, X, Maximize, RotateCcw, RotateCw } from 'lucide-react';
 import EXIF from 'exif-js';
 import axios from 'axios';
+import { useTheme } from './ThemeContext';
 
 interface Image {
   id: number;
@@ -15,6 +16,7 @@ interface Image {
 const API_URL = '/api';
 
 const CaseClosedSlideshow = () => {
+  const { activeTheme } = useTheme();
   const [images, setImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -247,7 +249,7 @@ const CaseClosedSlideshow = () => {
 
   // Keyboard navigation
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') goToNextSlide();
       if (e.key === 'ArrowLeft') goToPreviousSlide();
       if (e.key === 'Escape' && isFullscreen) toggleFullscreen();
@@ -271,168 +273,136 @@ const CaseClosedSlideshow = () => {
     return () => clearInterval(interval);
   }, [currentIndex, isZoomed]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center w-full h-screen bg-gray-900 text-white">
-        <div className="flex flex-col items-center">
-          <div className="text-2xl font-detective mb-4">Loading Case Files...</div>
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      </div>
-    );
-  }
-
-  const transform = getTransform();
-  const isRotated = isImageRotated90or270();
-  
+  // Function to render with themed styles
   return (
     <div 
-      ref={slideshowRef}
-      className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'w-full h-[calc(100vh-4rem)] bg-black'}`}
+      ref={slideshowRef} 
+      className={`min-h-screen bg-primary text-quaternary`}
+      style={{
+        backgroundColor: activeTheme.colors[0].hex,
+        color: activeTheme.colors[3].hex || '#ffffff'
+      }}
     >
-      {/* Case File Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-gray-900 bg-opacity-80 text-white p-4 flex items-center justify-between">
-        <div className="flex items-center">
-          <div className="mr-2 text-red-500"><Search size={20} /></div>
-          <div className="font-bold tracking-wider uppercase">CASE FILE: {images.length > 0 ? currentIndex + 1 : 0} of {images.length}</div>
+      {loading ? (
+        <div className="flex justify-center items-center h-screen">
+          <div className="text-2xl">Loading Case Files...</div>
         </div>
-        <div className="flex space-x-4">
-          <button 
-            onClick={() => rotateImage('counterclockwise')} 
-            className="hover:text-blue-400 transition" 
-            aria-label="Rotate Counterclockwise"
-            disabled={isSaving}
-          >
-            <RotateCcw size={20} className={isSaving ? "opacity-50" : ""} />
-          </button>
-          <button 
-            onClick={() => rotateImage('clockwise')} 
-            className="hover:text-blue-400 transition" 
-            aria-label="Rotate Clockwise"
-            disabled={isSaving}
-          >
-            <RotateCw size={20} className={isSaving ? "opacity-50" : ""} />
-          </button>
-          <button onClick={toggleZoom} className="hover:text-blue-400 transition" aria-label={isZoomed ? "Zoom Out" : "Zoom In"}>
-            <Search size={20} />
-          </button>
-          <button onClick={toggleFullscreen} className="hover:text-blue-400 transition" aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}>
-            <Maximize size={20} />
-          </button>
-          {isFullscreen && (
-            <button onClick={toggleFullscreen} className="hover:text-red-400 transition" aria-label="Close Fullscreen">
-              <X size={20} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Main Slideshow Area */}
-      <div className="relative w-full h-full overflow-hidden bg-gray-800">
-        {/* Slideshow images */}
-        {images.length > 0 && images[currentIndex] ? (
+      ) : (
+        <div className="relative">
+          {/* Header Bar */}
           <div 
-            ref={containerRef}
-            className="absolute inset-0 flex items-center justify-center" 
-            style={{ 
-              // Reserve space for header, navigation and caption
-              top: "4rem", 
-              bottom: "6rem" 
-            }}
+            className="p-4 flex justify-between items-center border-b border-tertiary"
+            style={{ borderColor: activeTheme.colors[2].hex }}
           >
-            {/* Scientific approach to ensure no vertical clipping:
-                1. Container is position: relative and has a fixed height
-                2. Image container has object-fit: contain to maintain aspect ratio
-                3. max-height ensures image never exceeds container height
-                4. For rotated images, we adjust the container to account for the rotation
-            */}
+            <h1 className="text-2xl font-bold">Case Closed: {images[currentIndex]?.title}</h1>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={toggleFullscreen}
+                className="p-2 rounded-full hover:bg-secondary transition-colors"
+                style={{ 
+                  backgroundColor: 'transparent',
+                }}
+                title="Toggle Fullscreen"
+              >
+                <Maximize className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* Main content area */}
+          <div 
+            className="flex flex-col items-center justify-center py-8 px-4"
+            style={{ minHeight: "calc(100vh - 130px)" }}
+          >
+            {/* Image container */}
             <div 
-              className={`relative ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
-              onClick={toggleZoom}
-              style={{
-                // For horizontal images, zoom to 150% width but never exceed height
-                // For vertical images, keep them fully visible
-                width: isRotated ? '65vh' : (isZoomed ? '150%' : '90%'),
-                height: isRotated ? '65vw' : '90%',
-                maxHeight: '100%', // Critical: ensure height never exceeds container
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.3s ease-in-out'
+              ref={containerRef}
+              className={`relative overflow-hidden max-w-4xl mx-auto ${isFullscreen ? 'w-full h-full' : ''}`}
+              style={{ 
+                backgroundColor: activeTheme.colors[4].hex || '#333',
+                boxShadow: `0 10px 25px rgba(0, 0, 0, 0.3)`,
+                borderRadius: '8px',
+                padding: '8px'
               }}
             >
-              <img 
+              <img
                 ref={imageRef}
-                src={images[currentIndex].src} 
-                alt={images[currentIndex].title}
+                src={images[currentIndex]?.src}
+                alt={images[currentIndex]?.title}
+                className={`max-w-full max-h-[70vh] object-contain mx-auto ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
                 style={{
-                  maxHeight: '100%', // Critical: ensure height never exceeds container
-                  maxWidth: '100%',  // Critical: ensure width never exceeds container
-                  objectFit: 'contain', // Critical: maintain aspect ratio while fitting in box
-                  transform: transform,
-                  transition: 'all 0.3s ease-in-out', // Smooth transition for zoom effect
-                  scale: isZoomed ? '1.5' : '1' // Apply zoom effect to the image itself
+                  transform: getTransform(),
+                  transition: 'transform 0.3s ease-in-out',
                 }}
+                onClick={toggleZoom}
                 onLoad={handleImageLoad}
-                onError={(e) => {
-                  // Basic error handling
-                  const target = e.target as HTMLImageElement; 
-                  target.onerror = null; // prevent looping
-                  target.src = `/api/placeholder/800/500?text=Error+Loading+${encodeURIComponent(images[currentIndex].title)}`;
-                  console.error("Error loading image:", images[currentIndex].src);
-                }}
               />
+              
+              {/* Navigation buttons with theme colors */}
+              <button
+                onClick={goToPreviousSlide}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
+                style={{ 
+                  backgroundColor: activeTheme.colors[1].hex,
+                  color: activeTheme.colors[0].hex
+                }}
+              >
+                <ChevronLeft className="w-8 h-8" />
+              </button>
+              <button
+                onClick={goToNextSlide}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
+                style={{ 
+                  backgroundColor: activeTheme.colors[1].hex,
+                  color: activeTheme.colors[0].hex
+                }}
+              >
+                <ChevronRight className="w-8 h-8" />
+              </button>
+            </div>
+
+            {/* Image controls */}
+            <div className="mt-4 flex justify-center gap-4">
+              <button
+                onClick={() => rotateImage('counterclockwise')}
+                className="p-2 rounded-full bg-tertiary text-primary hover:opacity-90 transition-opacity flex items-center"
+                style={{ 
+                  backgroundColor: activeTheme.colors[2].hex,
+                  color: '#ffffff'
+                }}
+                disabled={isSaving}
+              >
+                <RotateCcw className="w-5 h-5 mr-1" />
+                <span>Rotate Left</span>
+              </button>
+              <button
+                onClick={() => rotateImage('clockwise')}
+                className="p-2 rounded-full bg-tertiary text-primary hover:opacity-90 transition-opacity flex items-center"
+                style={{ 
+                  backgroundColor: activeTheme.colors[2].hex,
+                  color: '#ffffff'
+                }}
+                disabled={isSaving}
+              >
+                <RotateCw className="w-5 h-5 mr-1" />
+                <span>Rotate Right</span>
+              </button>
+            </div>
+
+            {/* Caption */}
+            <div 
+              className="mt-4 p-4 bg-secondary rounded-lg text-center max-w-2xl mx-auto"
+              style={{ 
+                backgroundColor: activeTheme.colors[1].hex,
+                color: '#ffffff'
+              }}
+            >
+              <p className="text-lg">{images[currentIndex]?.description}</p>
+              <p className="text-sm mt-2">Image {currentIndex + 1} of {images.length}</p>
             </div>
           </div>
-        ) : (
-          <div className="flex items-center justify-center w-full h-full text-white text-xl">
-            No images found or current image is invalid.
-          </div>
-        )}
-
-        {/* Navigation Controls */}
-        {images.length > 0 && (
-          <>
-            <button 
-              className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-r hover:bg-opacity-70 transition-all disabled:opacity-50"
-              onClick={goToPreviousSlide}
-              disabled={images.length <= 1}
-              aria-label="Previous Slide"
-            >
-              <ChevronLeft size={30} />
-            </button>
-            
-            <button 
-              className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-l hover:bg-opacity-70 transition-all disabled:opacity-50"
-              onClick={goToNextSlide}
-              disabled={images.length <= 1}
-              aria-label="Next Slide"
-            >
-              <ChevronRight size={30} />
-            </button>
-
-            {/* Caption Area */}
-            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white p-4">
-              <h3 className="text-xl font-bold mb-1">{images[currentIndex].title}</h3>
-              <p className="text-sm text-gray-300">{images[currentIndex].description}</p>
-            </div>
-
-            {/* Slide Indicators */}
-            <div className="absolute bottom-20 left-0 right-0 flex justify-center space-x-2 pb-2">
-              {images.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentIndex(index)}
-                  className={`w-2 h-2 rounded-full ${
-                    index === currentIndex ? 'bg-red-500 w-4' : 'bg-gray-400 hover:bg-gray-500'
-                  } transition-all duration-300`}
-                  aria-label={`Go to slide ${index + 1}`}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

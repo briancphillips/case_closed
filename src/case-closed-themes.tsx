@@ -1,86 +1,87 @@
 import React from 'react';
 
-const CaseClosedThemes = () => {
-  const themes = [
-    {
-      name: "Mystery Solved",
-      description: "Inspired by classic detective aesthetics with a feminine touch",
-      colors: [
-        { name: "Detective Navy", hex: "#1D3557" },
-        { name: "Clue Scarlet", hex: "#E63946" },
-        { name: "Parchment", hex: "#F1FAEE" },
-        { name: "Magnifying Gold", hex: "#FFD700" },
-        { name: "Shadow Mauve", hex: "#9F8BA8" }
-      ]
-    },
-    {
-      name: "Chapter Complete",
-      description: "Celebrating the closing of one chapter and opening of another",
-      colors: [
-        { name: "Book Binding Brown", hex: "#774936" },
-        { name: "Page Cream", hex: "#F8F0DC" },
-        { name: "Bookmark Rose", hex: "#E29587" },
-        { name: "Ink Blue", hex: "#3D5A80" },
-        { name: "New Chapter Green", hex: "#84A98C" }
-      ]
-    },
-    {
-      name: "Final Verdict",
-      description: "Bold, confident colors inspired by achievement and justice",
-      colors: [
-        { name: "Gavel Black", hex: "#2D2A32" },
-        { name: "Victory Gold", hex: "#FFC857" },
-        { name: "Authority Teal", hex: "#087E8B" },
-        { name: "Dignity White", hex: "#F5F5F5" },
-        { name: "Evidence Plum", hex: "#9B5DE5" }
-      ]
-    },
-    {
-      name: "Quest Completed",
-      description: "Adventurous colors that mark the end of a journey",
-      colors: [
-        { name: "Adventure Maroon", hex: "#7B2D26" },
-        { name: "Trophy Gold", hex: "#D6AD30" },
-        { name: "Path Green", hex: "#6B9080" },
-        { name: "Horizon Blue", hex: "#A4C3B2" },
-        { name: "Achievement Coral", hex: "#FF6B6B" }
-      ]
-    },
-    {
-      name: "Mystery Noir",
-      description: "Dramatic black and white palette with vivid accent colors",
-      colors: [
-        { name: "Detective Black", hex: "#171717" },
-        { name: "Evidence White", hex: "#EDEDED" },
-        { name: "Clue Red", hex: "#DA0037" },
-        { name: "Sleuth Silver", hex: "#AAAAAA" },
-        { name: "Secret Purple", hex: "#590D82" }
-      ]
-    },
-    {
-      name: "Final Piece",
-      description: "Puzzle-inspired colors representing completion",
-      colors: [
-        { name: "Puzzle Blue", hex: "#457B9D" },
-        { name: "Insight Pink", hex: "#F7B1AB" },
-        { name: "Connection Orange", hex: "#F3722C" },
-        { name: "Framework Grey", hex: "#BFBDC1" },
-        { name: "Solution Green", hex: "#90BE6D" }
-      ]
-    },
-    {
-      name: "Case Files",
-      description: "Vintage detective office colors with feminine undertones",
-      colors: [
-        { name: "Manila Folder", hex: "#F7EDE2" },
-        { name: "Typewriter Black", hex: "#313638" },
-        { name: "Office Teal", hex: "#3BCEAC" },
-        { name: "Redaction Red", hex: "#B23A48" },
-        { name: "Brass Accent", hex: "#C39351" }
-      ]
-    }
-  ];
+// Export the themes array for use in the ThemeContext
+export const themes = [
+  {
+    name: "Mystery Solved",
+    description: "Inspired by classic detective aesthetics with a feminine touch",
+    colors: [
+      { name: "Detective Navy", hex: "#1D3557" },
+      { name: "Clue Scarlet", hex: "#E63946" },
+      { name: "Parchment", hex: "#F1FAEE" },
+      { name: "Magnifying Gold", hex: "#FFD700" },
+      { name: "Shadow Mauve", hex: "#9F8BA8" }
+    ]
+  },
+  {
+    name: "Chapter Complete",
+    description: "Celebrating the closing of one chapter and opening of another",
+    colors: [
+      { name: "Book Binding Brown", hex: "#774936" },
+      { name: "Page Cream", hex: "#F8F0DC" },
+      { name: "Bookmark Rose", hex: "#E29587" },
+      { name: "Ink Blue", hex: "#3D5A80" },
+      { name: "New Chapter Green", hex: "#84A98C" }
+    ]
+  },
+  {
+    name: "Final Verdict",
+    description: "Bold, confident colors inspired by achievement and justice",
+    colors: [
+      { name: "Gavel Black", hex: "#2D2A32" },
+      { name: "Victory Gold", hex: "#FFC857" },
+      { name: "Authority Teal", hex: "#087E8B" },
+      { name: "Dignity White", hex: "#F5F5F5" },
+      { name: "Evidence Plum", hex: "#9B5DE5" }
+    ]
+  },
+  {
+    name: "Quest Completed",
+    description: "Adventurous colors that mark the end of a journey",
+    colors: [
+      { name: "Adventure Maroon", hex: "#7B2D26" },
+      { name: "Trophy Gold", hex: "#D6AD30" },
+      { name: "Path Green", hex: "#6B9080" },
+      { name: "Horizon Blue", hex: "#A4C3B2" },
+      { name: "Achievement Coral", hex: "#FF6B6B" }
+    ]
+  },
+  {
+    name: "Mystery Noir",
+    description: "Dramatic black and white palette with vivid accent colors",
+    colors: [
+      { name: "Detective Black", hex: "#171717" },
+      { name: "Evidence White", hex: "#EDEDED" },
+      { name: "Clue Red", hex: "#DA0037" },
+      { name: "Sleuth Silver", hex: "#AAAAAA" },
+      { name: "Secret Purple", hex: "#590D82" }
+    ]
+  },
+  {
+    name: "Final Piece",
+    description: "Puzzle-inspired colors representing completion",
+    colors: [
+      { name: "Puzzle Blue", hex: "#457B9D" },
+      { name: "Insight Pink", hex: "#F7B1AB" },
+      { name: "Connection Orange", hex: "#F3722C" },
+      { name: "Framework Grey", hex: "#BFBDC1" },
+      { name: "Solution Green", hex: "#90BE6D" }
+    ]
+  },
+  {
+    name: "Case Files",
+    description: "Vintage detective office colors with feminine undertones",
+    colors: [
+      { name: "Manila Folder", hex: "#F7EDE2" },
+      { name: "Typewriter Black", hex: "#313638" },
+      { name: "Office Teal", hex: "#3BCEAC" },
+      { name: "Redaction Red", hex: "#B23A48" },
+      { name: "Brass Accent", hex: "#C39351" }
+    ]
+  }
+];
 
+const CaseClosedThemes = () => {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-center">Case Closed: Graduation Color Themes</h1>

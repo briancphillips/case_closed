@@ -8,3 +8,54 @@ body {
   /* The background is already set in index.html style for faster initial paint,
      but you could manage it here too if you prefer. */
 }
+
+/* Theme color utility classes */
+@layer utilities {
+  .bg-primary {
+    background-color: var(--primary-color);
+  }
+  .bg-secondary {
+    background-color: var(--secondary-color);
+  }
+  .bg-tertiary {
+    background-color: var(--tertiary-color);
+  }
+  .bg-quaternary {
+    background-color: var(--quaternary-color);
+  }
+  .bg-quinary {
+    background-color: var(--quinary-color);
+  }
+
+  .text-primary {
+    color: var(--primary-color);
+  }
+  .text-secondary {
+    color: var(--secondary-color);
+  }
+  .text-tertiary {
+    color: var(--tertiary-color);
+  }
+  .text-quaternary {
+    color: var(--quaternary-color);
+  }
+  .text-quinary {
+    color: var(--quinary-color);
+  }
+
+  .border-primary {
+    border-color: var(--primary-color);
+  }
+  .border-secondary {
+    border-color: var(--secondary-color);
+  }
+  .border-tertiary {
+    border-color: var(--tertiary-color);
+  }
+  .border-quaternary {
+    border-color: var(--quaternary-color);
+  }
+  .border-quinary {
+    border-color: var(--quinary-color);
+  }
+}
