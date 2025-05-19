@@ -25,12 +25,18 @@ const CaseClosedSlideshow = () => {
   const [orientations, setOrientations] = useState<Record<number, number>>({});
   const [manualRotations, setManualRotations] = useState<Record<string, number>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [naturalDimensions, setNaturalDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const slideshowRef = useRef<HTMLDivElement>(null);
   
+  useEffect(() => {
+    setNaturalDimensions(null); // Reset when current image changes, before new one loads
+  }, [currentIndex]);
+
   // Define the isRotated90or270 function earlier in the component
-  const isImageRotated90or270 = () => {
+  const isImageRotated90or270 = useCallback(() => {
     const currentImagePath = images[currentIndex]?.src;
     if (!currentImagePath) return false;
     
@@ -44,7 +50,7 @@ const CaseClosedSlideshow = () => {
     
     // Check EXIF orientation
     return [5, 6, 7, 8].includes(orientations[currentIndex] || 0);
-  };
+  }, [images, currentIndex, manualRotations, orientations]);
 
   // Fetch stored rotations from the server
   const fetchRotations = useCallback(async () => {
@@ -97,12 +103,17 @@ const CaseClosedSlideshow = () => {
       "4C5D07C2-5DDA-4269-8A17-E84D071DAA3E_1_105_c.jpeg"
     ];
 
-    const loadedImages = imageFileNames.map((fileName, index) => ({
-      id: index + 1,
-      src: `/slides/${fileName}`,
-      title: `Case File #${index + 1}: ${fileName}`,
-      description: `Braxton's Graduation - Exhibit ${fileName}`
-    }));
+    const loadedImages = imageFileNames.map((fileName, index) => {
+      // Remove the file extension for display
+      const displayName = fileName.replace(/\.[^/.]+$/, "");
+      
+      return {
+        id: index + 1,
+        src: `/slides/${fileName}`,
+        title: `Case File #${index + 1}: ${displayName}`,
+        description: `Braxton's Graduation - Exhibit ${displayName}`
+      };
+    });
     
     setImages(loadedImages);
     fetchRotations();
@@ -126,9 +137,10 @@ const CaseClosedSlideshow = () => {
 
   // Extract EXIF orientation when image loads
   const handleImageLoad = () => {
-    if (imageRef.current && images.length > 0) {
+    if (imageRef.current) {
+      const imgElement = imageRef.current;
       // @ts-ignore - EXIF.js actually can work with HTMLImageElement but TS doesn't know that
-      EXIF.getData(imageRef.current, function() {
+      EXIF.getData(imgElement, function() {
         // @ts-ignore - EXIF.js adds getTag method to the element
         const orientation = EXIF.getTag(this, 'Orientation');
         if (orientation) {
@@ -138,6 +150,15 @@ const CaseClosedSlideshow = () => {
           }));
         }
       });
+
+      // Set natural dimensions
+      if (imgElement.naturalWidth > 0 && imgElement.naturalHeight > 0) {
+        setNaturalDimensions({ width: imgElement.naturalWidth, height: imgElement.naturalHeight });
+      } else {
+        setNaturalDimensions(null); // Reset if dimensions are invalid
+      }
+    } else {
+      setNaturalDimensions(null);
     }
   };
 
@@ -273,11 +294,20 @@ const CaseClosedSlideshow = () => {
     return () => clearInterval(interval);
   }, [currentIndex, isZoomed]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportHeight(window.innerHeight);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // We will modify the JSX part to use Flexbox natural sizing
   // Function to render with themed styles
   return (
-    <div 
-      ref={slideshowRef} 
-      className={`min-h-screen bg-primary text-quaternary`}
+    <div
+      ref={slideshowRef}
+      className={`min-h-screen w-full bg-primary text-quaternary`}
       style={{
         backgroundColor: activeTheme.colors[0].hex,
         color: activeTheme.colors[3].hex || '#ffffff'
@@ -288,14 +318,32 @@ const CaseClosedSlideshow = () => {
           <div className="text-2xl">Loading Case Files...</div>
         </div>
       ) : (
-        <div className="relative">
+        <div className="flex flex-col h-screen">
           {/* Header Bar */}
           <div 
-            className="p-4 flex justify-between items-center border-b border-tertiary"
+            className="p-4 flex justify-between items-center border-b border-tertiary flex-shrink-0"
             style={{ borderColor: activeTheme.colors[2].hex }}
           >
             <h1 className="text-2xl font-bold">Case Closed: {images[currentIndex]?.title}</h1>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => rotateImage('counterclockwise')}
+                className="p-2 rounded-full hover:bg-secondary transition-colors"
+                style={{ backgroundColor: 'transparent' }}
+                title="Rotate Left"
+                disabled={isSaving}
+              >
+                <RotateCcw className="w-6 h-6" />
+              </button>
+              <button
+                onClick={() => rotateImage('clockwise')}
+                className="p-2 rounded-full hover:bg-secondary transition-colors"
+                style={{ backgroundColor: 'transparent' }}
+                title="Rotate Right"
+                disabled={isSaving}
+              >
+                <RotateCw className="w-6 h-6" />
+              </button>
               <button 
                 onClick={toggleFullscreen}
                 className="p-2 rounded-full hover:bg-secondary transition-colors"
@@ -309,94 +357,79 @@ const CaseClosedSlideshow = () => {
             </div>
           </div>
 
-          {/* Main content area */}
-          <div 
-            className="flex flex-col items-center justify-center py-8 px-4"
-            style={{ minHeight: "calc(100vh - 130px)" }}
+          {/* Main content area - takes all available space */}
+          <div
+            className="relative flex flex-col items-center justify-center py-4 px-4 flex-grow overflow-hidden"
+            ref={containerRef}
           >
-            {/* Image container */}
-            <div 
-              ref={containerRef}
-              className={`relative overflow-hidden max-w-4xl mx-auto ${isFullscreen ? 'w-full h-full' : ''}`}
-              style={{ 
+            {/* Image container - note we moved ref to parent */}
+            <div
+              className={`relative overflow-hidden max-w-5xl mx-auto ${isFullscreen ? 'w-full h-full' : ''}`}
+              style={{
                 backgroundColor: activeTheme.colors[4].hex || '#333',
                 boxShadow: `0 10px 25px rgba(0, 0, 0, 0.3)`,
                 borderRadius: '8px',
-                padding: '8px'
+                padding: '4px',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                transform: getTransform(),
+                transition: 'transform 0.3s ease-in-out',
+                width: 'auto',
+                height: 'auto',
+                maxWidth: isImageRotated90or270() ? '92%' : '96%',
+                maxHeight: isImageRotated90or270() ? '96%' : '92%'
               }}
             >
               <img
                 ref={imageRef}
                 src={images[currentIndex]?.src}
                 alt={images[currentIndex]?.title}
-                className={`max-w-full max-h-[70vh] object-contain mx-auto ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
+                className={`object-contain ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
                 style={{
-                  transform: getTransform(),
-                  transition: 'transform 0.3s ease-in-out',
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  width: 'auto',
+                  height: 'auto'
                 }}
                 onClick={toggleZoom}
                 onLoad={handleImageLoad}
               />
-              
-              {/* Navigation buttons with theme colors */}
-              <button
-                onClick={goToPreviousSlide}
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
-                style={{ 
-                  backgroundColor: activeTheme.colors[1].hex,
-                  color: activeTheme.colors[0].hex
-                }}
-              >
-                <ChevronLeft className="w-8 h-8" />
-              </button>
-              <button
-                onClick={goToNextSlide}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
-                style={{ 
-                  backgroundColor: activeTheme.colors[1].hex,
-                  color: activeTheme.colors[0].hex
-                }}
-              >
-                <ChevronRight className="w-8 h-8" />
-              </button>
             </div>
 
-            {/* Image controls */}
-            <div className="mt-4 flex justify-center gap-4">
-              <button
-                onClick={() => rotateImage('counterclockwise')}
-                className="p-2 rounded-full bg-tertiary text-primary hover:opacity-90 transition-opacity flex items-center"
-                style={{ 
-                  backgroundColor: activeTheme.colors[2].hex,
-                  color: '#ffffff'
-                }}
-                disabled={isSaving}
-              >
-                <RotateCcw className="w-5 h-5 mr-1" />
-                <span>Rotate Left</span>
-              </button>
-              <button
-                onClick={() => rotateImage('clockwise')}
-                className="p-2 rounded-full bg-tertiary text-primary hover:opacity-90 transition-opacity flex items-center"
-                style={{ 
-                  backgroundColor: activeTheme.colors[2].hex,
-                  color: '#ffffff'
-                }}
-                disabled={isSaving}
-              >
-                <RotateCw className="w-5 h-5 mr-1" />
-                <span>Rotate Right</span>
-              </button>
-            </div>
-
-            {/* Caption */}
-            <div 
-              className="mt-4 p-4 bg-secondary rounded-lg text-center max-w-2xl mx-auto"
+            {/* Navigation buttons with theme colors */}
+            <button
+              onClick={goToPreviousSlide}
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
               style={{ 
                 backgroundColor: activeTheme.colors[1].hex,
-                color: '#ffffff'
+                color: activeTheme.colors[2].hex
               }}
             >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
+            <button
+              onClick={goToNextSlide}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
+              style={{ 
+                backgroundColor: activeTheme.colors[1].hex,
+                color: activeTheme.colors[2].hex
+              }}
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
+          </div>
+
+          {/* Footer - doesn't push content, takes its own space */}
+          <div 
+            className="p-4 bg-secondary text-center flex-shrink-0 border-t"
+            style={{ 
+              backgroundColor: activeTheme.colors[1].hex,
+              color: '#ffffff',
+              borderColor: activeTheme.colors[2].hex
+            }}
+          >
+            <div className="max-w-4xl mx-auto">
               <p className="text-lg">{images[currentIndex]?.description}</p>
               <p className="text-sm mt-2">Image {currentIndex + 1} of {images.length}</p>
             </div>
