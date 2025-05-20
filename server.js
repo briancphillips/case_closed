@@ -29,6 +29,41 @@ if (!fs.existsSync(ROTATIONS_FILE)) {
   }
 }
 
+// Data file for storing slide details
+const SLIDE_DETAILS_FILE = path.join(__dirname, "slideDetails.json");
+
+// Initialize slide details file if it doesn't exist
+if (!fs.existsSync(SLIDE_DETAILS_FILE)) {
+  console.log(`Creating new slide details file at: ${SLIDE_DETAILS_FILE}`);
+  fs.writeFileSync(SLIDE_DETAILS_FILE, JSON.stringify({}), "utf8");
+} else {
+  console.log(`Using existing slide details file at: ${SLIDE_DETAILS_FILE}`);
+  try {
+    fs.accessSync(SLIDE_DETAILS_FILE, fs.constants.W_OK);
+    console.log("Slide details file is writeable");
+  } catch (err) {
+    console.error("WARNING: Cannot write to slide details file:", err);
+  }
+}
+
+// Data file for storing global theme
+const GLOBAL_THEME_FILE = path.join(__dirname, "globalTheme.json");
+
+// Initialize global theme file if it doesn't exist
+if (!fs.existsSync(GLOBAL_THEME_FILE)) {
+  console.log(`Creating new global theme file at: ${GLOBAL_THEME_FILE}`);
+  // Default to null or a default theme object if you want
+  fs.writeFileSync(GLOBAL_THEME_FILE, JSON.stringify(null), "utf8");
+} else {
+  console.log(`Using existing global theme file at: ${GLOBAL_THEME_FILE}`);
+  try {
+    fs.accessSync(GLOBAL_THEME_FILE, fs.constants.W_OK);
+    console.log("Global theme file is writeable");
+  } catch (err) {
+    console.error("WARNING: Cannot write to global theme file:", err);
+  }
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -81,6 +116,88 @@ app.post("/api/rotations", (req, res) => {
   } catch (error) {
     console.error("Error updating rotation:", error);
     res.status(500).json({ error: "Failed to update rotation" });
+  }
+});
+
+// Get all slide details
+app.get("/api/slide-details", (req, res) => {
+  try {
+    const details = JSON.parse(fs.readFileSync(SLIDE_DETAILS_FILE, "utf8"));
+    console.log("Sending slide details:", details);
+    res.json(details);
+  } catch (error) {
+    console.error("Error reading slide details:", error);
+    res.status(500).json({ error: "Failed to read slide details" });
+  }
+});
+
+// Update slide details for a specific image
+app.post("/api/slide-details/:imagePath", (req, res) => {
+  try {
+    const imagePath = decodeURIComponent(req.params.imagePath);
+    const { title, description, isHidden } = req.body;
+    console.log(`Received slide details update for ${imagePath}:`, req.body);
+
+    if (!imagePath) {
+      return res.status(400).json({ error: "Image path is required" });
+    }
+
+    const details = JSON.parse(fs.readFileSync(SLIDE_DETAILS_FILE, "utf8"));
+
+    if (!details[imagePath]) {
+      details[imagePath] = {};
+    }
+
+    // Update only provided fields
+    if (title !== undefined) details[imagePath].title = title;
+    if (description !== undefined) details[imagePath].description = description;
+    if (isHidden !== undefined) details[imagePath].isHidden = isHidden;
+    // Allow removing fields by passing null
+    if (title === null) delete details[imagePath].title;
+    if (description === null) delete details[imagePath].description;
+    if (isHidden === null) delete details[imagePath].isHidden;
+
+    console.log("Saving updated slide details:", details);
+
+    fs.writeFileSync(
+      SLIDE_DETAILS_FILE,
+      JSON.stringify(details, null, 2),
+      "utf8"
+    );
+
+    const savedData = JSON.parse(fs.readFileSync(SLIDE_DETAILS_FILE, "utf8"));
+    console.log("Verification - saved slide details:", savedData);
+
+    res.json({ success: true, imagePath, updatedDetails: details[imagePath] });
+  } catch (error) {
+    console.error("Error updating slide details:", error);
+    res.status(500).json({ error: "Failed to update slide details" });
+  }
+});
+
+// Get global theme
+app.get("/api/global-theme", (req, res) => {
+  try {
+    const theme = JSON.parse(fs.readFileSync(GLOBAL_THEME_FILE, "utf8"));
+    res.json(theme);
+  } catch (error) {
+    console.error("Error reading global theme:", error);
+    res.status(500).json({ error: "Failed to read global theme" });
+  }
+});
+
+// Set global theme
+app.post("/api/global-theme", (req, res) => {
+  try {
+    const theme = req.body;
+    if (!theme || !theme.name || !theme.colors) {
+      return res.status(400).json({ error: "Invalid theme object" });
+    }
+    fs.writeFileSync(GLOBAL_THEME_FILE, JSON.stringify(theme, null, 2), "utf8");
+    res.json({ success: true, theme });
+  } catch (error) {
+    console.error("Error saving global theme:", error);
+    res.status(500).json({ error: "Failed to save global theme" });
   }
 });
 

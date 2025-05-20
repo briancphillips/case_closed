@@ -1,0 +1,26 @@
+{
+  "name": "Case Files",
+  "description": "Vintage detective office colors with feminine undertones",
+  "colors": [
+    {
+      "name": "Manila Folder",
+      "hex": "#F7EDE2"
+    },
+    {
+      "name": "Typewriter Black",
+      "hex": "#313638"
+    },
+    {
+      "name": "Office Teal",
+      "hex": "#3BCEAC"
+    },
+    {
+      "name": "Redaction Red",
+      "hex": "#B23A48"
+    },
+    {
+      "name": "Brass Accent",
+      "hex": "#C39351"
+    }
+  ]
+}

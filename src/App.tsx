@@ -1,27 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import CaseClosedSlideshow from './case-closed-slideshow';
-import { ThemeProvider } from './ThemeContext';
-import ThemeStyles from './themeStyles';
-import ThemePanel from './ThemePanel';
+// ThemeProvider and ThemeStyles are now handled in main.tsx at a higher level
+// import { ThemeProvider } from './ThemeContext';
+// import ThemeStyles from './themeStyles';
+import ThemePanel from './ThemePanel'; // Will be moved to AdminPortal
 import './index.css';
 import { imageFileNames } from './slideData'; 
 import axios from 'axios'; 
+// AdminToggleButton and AdminPanel are no longer used directly in App.tsx
+// import AdminToggleButton from './AdminToggleButton';
+// import AdminPanel, { SlideDetailsData } from './AdminPanel';
+import { SlideDetailsData } from './SlideEditor'; // Ensure this type comes from SlideEditor now
 
 const API_URL = '/api'; 
 
+// Define a more specific type for slide details received from API
+interface SlideDetailsApiResponse {
+  [imagePath: string]: SlideDetailsData;
+}
+
+// This App component now primarily sets up the main slideshow view for the '/' route.
 function App() {
   const [preloadedRotations, setPreloadedRotations] = useState<Record<string, number> | null>(null);
+  const [preloadedSlideDetails, setPreloadedSlideDetails] = useState<SlideDetailsApiResponse | null>(null);
   const [appLoading, setAppLoading] = useState(true);
+  // isAdminPanelOpen and currentSlideForAdmin state are no longer needed here, 
+  // as AdminPanel is in a separate route and will manage its own state or get it from AdminPortal.
 
   useEffect(() => {
     const fetchAppData = async () => {
       try {
-        console.log('App: Fetching rotations...');
-        const rotationsResponse = await axios.get(`${API_URL}/rotations`);
+        console.log('App (Slideshow Page): Fetching initial data...');
+        const [rotationsResponse, slideDetailsResponse] = await Promise.all([
+          axios.get(`${API_URL}/rotations`),
+          axios.get(`${API_URL}/slide-details`)
+        ]);
+        
         setPreloadedRotations(rotationsResponse.data);
-        console.log('App: Rotations fetched', rotationsResponse.data);
+        setPreloadedSlideDetails(slideDetailsResponse.data);
 
-        console.log('App: Preloading images...');
+        console.log('App (Slideshow Page): Preloading images...');
         const imagePromises = imageFileNames.map(fileName => {
           return new Promise<void>((resolve, reject) => {
             const img = new Image();
@@ -30,20 +48,21 @@ function App() {
             img.onerror = () => reject(new Error(`Failed to load image: ${fileName}`));
           });
         });
-
         await Promise.all(imagePromises);
-        console.log('App: All images preloaded.');
+        console.log('App (Slideshow Page): All images preloaded.');
 
       } catch (error) {
-        console.error('App: Error preloading data:', error);
+        console.error('App (Slideshow Page): Error preloading data:', error);
         if (!preloadedRotations) setPreloadedRotations({}); 
+        if (!preloadedSlideDetails) setPreloadedSlideDetails({});
       } finally {
         setAppLoading(false);
       }
     };
-
     fetchAppData();
   }, []); 
+
+  // handleAdminSave is no longer needed here. It will be in AdminPortal.tsx
 
   if (appLoading) {
     return (
@@ -56,13 +75,17 @@ function App() {
   }
 
   return (
-    <ThemeProvider>
-      <ThemeStyles />
-      <React.StrictMode>
-        <CaseClosedSlideshow preloadedRotations={preloadedRotations || {}} />
-        <ThemePanel />
-      </React.StrictMode>
-    </ThemeProvider>
+    // ThemeProvider and ThemeStyles are now in main.tsx, wrapping BrowserRouter
+    // React.StrictMode is also in main.tsx
+    <CaseClosedSlideshow 
+      preloadedRotations={preloadedRotations || {}}
+      preloadedSlideDetails={preloadedSlideDetails || {}} 
+      // onCurrentSlideChangeForAdmin is no longer needed from App directly to Slideshow for the old AdminPanel
+      // If AdminPortal needs to know about the current slide in the main view (e.g. for a quick edit button),
+      // a different mechanism (context or global state) would be needed.
+      key={JSON.stringify(preloadedSlideDetails)} // Re-render if details change externally
+    />
+    // ThemePanel, AdminToggleButton, AdminPanel are removed from here.
   );
 }
 

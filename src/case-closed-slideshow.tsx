@@ -4,21 +4,35 @@ import EXIF from 'exif-js';
 import axios from 'axios';
 import { useTheme } from './ThemeContext';
 import { imageFileNames } from './slideData';
+import { SlideDetailsData } from './AdminPanel';
 
 interface Image {
   id: number;
   src: string;
   title: string;
   description: string;
+  isHidden?: boolean;
+}
+
+interface SlideDetailsApiResponse {
+  [imagePath: string]: SlideDetailsData;
 }
 
 interface CaseClosedSlideshowProps {
   preloadedRotations?: Record<string, number>;
+  preloadedSlideDetails?: SlideDetailsApiResponse;
+  onCurrentSlideChangeForAdmin?: (slideInfo: { src: string | null; title: string; description: string }) => void;
+  isAdminPanelOpen?: boolean;
 }
 
 const API_URL = '/api';
 
-const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRotations }) => {
+const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ 
+  preloadedRotations, 
+  preloadedSlideDetails, 
+  onCurrentSlideChangeForAdmin,
+  isAdminPanelOpen
+}) => {
   const { activeTheme } = useTheme();
   const [images, setImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,17 +41,37 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
   const [isZoomed, setIsZoomed] = useState(false);
   const [orientations, setOrientations] = useState<Record<number, number>>({});
   const [manualRotations, setManualRotations] = useState<Record<string, number>>({});
+  const [slideDetails, setSlideDetails] = useState<SlideDetailsApiResponse>({});
   const [isSaving, setIsSaving] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState<{ width: number; height: number } | null>(null);
-  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
-  const [animationKey, setAnimationKey] = useState(0); 
+  const [animationKey, setAnimationKey] = useState(0);
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const slideshowRef = useRef<HTMLDivElement>(null);
+  const autoAdvanceTimerRef = useRef<number | null>(null);
   
+  // Function to get next image index
+  const getNextIndex = useCallback(() => {
+    return currentIndex === images.length - 1 ? 0 : currentIndex + 1;
+  }, [currentIndex, images.length]);
+  
+  // Reset dimensions when changing slides
   useEffect(() => {
     setNaturalDimensions(null); 
   }, [currentIndex]);
+
+  // Enhanced preloading: Preload a few slides ahead
+  useEffect(() => {
+    if (images.length === 0) return;
+    
+    // Preload next 3 images
+    for (let i = 1; i <= 3; i++) {
+      const preloadIndex = (currentIndex + i) % images.length;
+      const img = new Image();
+      img.src = images[preloadIndex]?.src;
+    }
+  }, [images, currentIndex]);
 
   const isImageRotated90or270 = useCallback(() => {
     const currentImagePath = images[currentIndex]?.src;
@@ -80,26 +114,50 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
   }, []);
 
   useEffect(() => {
-    const loadedImages = imageFileNames.map((fileName, index) => {
-      const displayName = fileName.replace(/\.[^/.]+$/, "");
+    let processedImages = imageFileNames.map((fileName, index) => {
+      const normalizedSrc = `slides/${fileName}`;
+      const defaultBaseTitle = fileName.replace(/\.[^/.]+$/, "");
       
+      const details = preloadedSlideDetails ? preloadedSlideDetails[normalizedSrc] : null;
+
       return {
         id: index + 1,
-        src: `/slides/${fileName}`,
-        title: `Case File #${index + 1}: ${displayName}`,
-        description: `Braxton's Graduation - Exhibit ${displayName}`
+        src: `/${normalizedSrc}`,
+        title: details?.title || defaultBaseTitle,
+        description: details?.description || `Braxton's Graduation - Exhibit ${defaultBaseTitle}`,
+        isHidden: details?.isHidden || false,
       };
     });
+
+    processedImages = processedImages.filter(img => !img.isHidden);
+    setImages(processedImages);
     
-    setImages(loadedImages);
     if (preloadedRotations) {
-      console.log('Using preloaded rotations:', preloadedRotations);
-      setManualRotations(preloadedRotations);
+      const normalizedRotations: Record<string, number> = {};
+      for (const key in preloadedRotations) {
+        normalizedRotations[key.replace(/^\//, '')] = preloadedRotations[key];
+      }
+      setManualRotations(normalizedRotations);
     } else {
       fetchRotations();
     }
+
+    if (preloadedSlideDetails) {
+        setSlideDetails(preloadedSlideDetails);
+    }
     setLoading(false);
-  }, [fetchRotations, preloadedRotations]);
+  }, [preloadedRotations, preloadedSlideDetails, fetchRotations]);
+
+  useEffect(() => {
+    if (onCurrentSlideChangeForAdmin && images[currentIndex]) {
+      const currentImage = images[currentIndex];
+      onCurrentSlideChangeForAdmin({
+        src: currentImage.src.replace(/^\//, ''),
+        title: currentImage.title,
+        description: currentImage.description,
+      });
+    }
+  }, [currentIndex, images, onCurrentSlideChangeForAdmin]);
 
   const getRotationTransform = (orientation: number): string => {
     switch(orientation) {
@@ -130,15 +188,34 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
               }));
             }
           } catch (tagError) {
-            console.warn(`Error reading EXIF tag for image ${images[currentIndex]?.src}:`, tagError);
+            console.warn(`Error reading EXIF Orientation tag for image ${images[currentIndex]?.src}:`, tagError);
+            // Set a default orientation or handle error gracefully if needed
+            setOrientations(prev => ({
+              ...prev,
+              [currentIndex]: 1 // Default to normal orientation
+            }));
           }
         });
       } catch (exifError) {
         console.warn(`Error initializing EXIF.getData for image ${images[currentIndex]?.src}:`, exifError);
+        // If EXIF.getData itself fails, ensure a default orientation
+        setOrientations(prev => ({
+          ...prev,
+          [currentIndex]: 1 // Default to normal orientation
+        }));
       }
 
       if (imgElement.naturalWidth > 0 && imgElement.naturalHeight > 0) {
         setNaturalDimensions({ width: imgElement.naturalWidth, height: imgElement.naturalHeight });
+        
+        // Update container size once when first image loads if not already set
+        if (!containerSize && containerRef.current) {
+          const container = containerRef.current;
+          setContainerSize({
+            width: container.clientWidth,
+            height: container.clientHeight
+          });
+        }
       } else {
         setNaturalDimensions(null); 
       }
@@ -166,14 +243,21 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
     saveRotation(normalizedPath, newRotation);
   };
 
-  const goToNextSlide = () => {
+  // Memoize goToNextSlide to stabilize its reference for useEffect dependency array
+  const memoizedGoToNextSlide = useCallback(() => {
+    if (images.length === 0) return;
     setCurrentIndex((prevIndex) => (prevIndex === images.length - 1 ? 0 : prevIndex + 1));
-    setAnimationKey(prevKey => prevKey + 1); 
-  };
+    requestAnimationFrame(() => {
+      setAnimationKey(prevKey => prevKey + 1);
+    });
+  }, [images.length]); // Dependency: images.length
 
   const goToPreviousSlide = () => {
+    if (images.length === 0) return;
     setCurrentIndex((prevIndex) => (prevIndex === 0 ? images.length - 1 : prevIndex - 1));
-    setAnimationKey(prevKey => prevKey + 1); 
+    requestAnimationFrame(() => {
+      setAnimationKey(prevKey => prevKey + 1);
+    });
   };
 
   const toggleFullscreen = () => {
@@ -240,7 +324,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') goToNextSlide();
+      if (e.key === 'ArrowRight') memoizedGoToNextSlide();
       if (e.key === 'ArrowLeft') goToPreviousSlide();
       if (e.key === 'Escape' && isFullscreen) toggleFullscreen();
     };
@@ -250,25 +334,63 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentIndex, images.length, isFullscreen]);
+  }, [currentIndex, images.length, isFullscreen, memoizedGoToNextSlide]);
 
+  // Setup auto-advance with proper cleanup
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isZoomed) {
-        goToNextSlide();
-      }
-    }, 5000);
+    if (autoAdvanceTimerRef.current !== null) {
+      clearInterval(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null; 
+    }
     
-    return () => clearInterval(interval);
-  }, [currentIndex, isZoomed]);
+    if (!isZoomed && !isAdminPanelOpen && images.length > 0) { 
+      autoAdvanceTimerRef.current = window.setInterval(() => {
+        memoizedGoToNextSlide();
+      }, 5000);
+    }
+    
+    return () => {
+      if (autoAdvanceTimerRef.current !== null) {
+        clearInterval(autoAdvanceTimerRef.current);
+        autoAdvanceTimerRef.current = null;
+      }
+    };
+  }, [isZoomed, isAdminPanelOpen, images.length, memoizedGoToNextSlide]); // Updated dependencies
 
+  // Update resize handler
   useEffect(() => {
     const handleResize = () => {
-      setViewportHeight(window.innerHeight);
+      if (containerRef.current) {
+        setContainerSize({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight
+        });
+      }
     };
+    
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Get container background style
+  const getContainerBackgroundStyle = () => {
+    return {
+      backgroundColor: 'transparent',
+      // boxShadow: `0 10px 25px rgba(0, 0, 0, 0.3)`,
+      borderRadius: '8px',
+      padding: '4px',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      transform: getTransform(),
+      transition: 'transform 0.3s ease-in-out',
+      
+      width: containerSize ? `${containerSize.width}px` : '100%',
+      height: containerSize ? `${containerSize.height}px` : '100%',
+      minHeight: '400px',
+      overflow: 'hidden'
+    };
+  };
 
   return (
     <div
@@ -289,7 +411,9 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
             className="p-4 flex justify-between items-center border-b border-tertiary flex-shrink-0"
             style={{ borderColor: activeTheme.colors[2].hex }}
           >
-            <h1 className="text-2xl font-bold">Case Closed: {images[currentIndex]?.title}</h1>
+            <h1 className="text-2xl font-bold">
+              {images[currentIndex] ? `Case File #${images[currentIndex].id}: ${images[currentIndex].title}` : 'Case Closed'}
+            </h1>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => rotateImage('counterclockwise')}
@@ -309,7 +433,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
               >
                 <RotateCw className="w-6 h-6" />
               </button>
-              <button 
+              <button
                 onClick={toggleFullscreen}
                 className="p-2 rounded-full hover:bg-secondary transition-colors"
                 style={{ 
@@ -327,22 +451,8 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
             ref={containerRef}
           >
             <div
-              className={`relative overflow-hidden max-w-5xl mx-auto ${isFullscreen ? 'w-full h-full' : ''}`}
-              style={{
-                backgroundColor: activeTheme.colors[4].hex || '#333',
-                boxShadow: `0 10px 25px rgba(0, 0, 0, 0.3)`,
-                borderRadius: '8px',
-                padding: '4px',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                transform: getTransform(),
-                transition: 'transform 0.3s ease-in-out',
-                width: 'auto',
-                height: 'auto',
-                maxWidth: isImageRotated90or270() ? '92%' : '96%',
-                maxHeight: isImageRotated90or270() ? '96%' : '92%'
-              }}
+              className="image-container relative overflow-hidden max-w-5xl mx-auto"
+              style={getContainerBackgroundStyle()}
             >
               {images.length > 0 && images[currentIndex] && (
                 <div 
@@ -365,6 +475,16 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
                   />
                 </div>
               )}
+              
+              {/* Hidden preload container */}
+              <div style={{ display: 'none', position: 'absolute', pointerEvents: 'none' }}>
+                {images.length > 0 && (
+                  <>
+                    <img src={images[(currentIndex + 1) % images.length]?.src} alt="preload" />
+                    <img src={images[(currentIndex + 2) % images.length]?.src} alt="preload" />
+                  </>
+                )}
+              </div>
             </div>
 
             <button
@@ -378,7 +498,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
               <ChevronLeft className="w-8 h-8" />
             </button>
             <button
-              onClick={goToNextSlide}
+              onClick={memoizedGoToNextSlide}
               className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
               style={{ 
                 backgroundColor: activeTheme.colors[1].hex,
@@ -389,7 +509,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
             </button>
           </div>
 
-          <div 
+          <div
             className="p-4 bg-secondary text-center flex-shrink-0 border-t"
             style={{ 
               backgroundColor: activeTheme.colors[1].hex,
@@ -398,8 +518,10 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({ preloadedRota
             }}
           >
             <div className="max-w-4xl mx-auto">
-              <p className="text-lg">{images[currentIndex]?.description}</p>
-              <p className="text-sm mt-2">Image {currentIndex + 1} of {images.length}</p>
+              <p className="text-lg">{images[currentIndex]?.description || 'Loading description...'}</p>
+              <p className="text-sm mt-2">
+                {images.length > 0 ? `Image ${images.findIndex(img => img.id === images[currentIndex]?.id) + 1} of ${images.length}` : 'No images'}
+              </p>
             </div>
           </div>
         </div>
