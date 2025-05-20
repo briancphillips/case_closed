@@ -7,6 +7,18 @@ body {
   margin: 0;
   /* The background is already set in index.html style for faster initial paint,
      but you could manage it here too if you prefer. */
+  background-color: #111827; /* bg-gray-900 */
+  overflow: hidden; /* Prevent scrollbars during slide transition */
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative; /* For positioning animated children if needed */
+  overflow: hidden; /* Crucial to clip the sliding image */
 }
 
 /* Theme color utility classes */
@@ -58,4 +70,24 @@ body {
   .border-quinary {
     border-color: var(--quinary-color);
   }
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%); /* Start off-screen to the right */
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0%); /* End on-screen */
+    opacity: 1;
+  }
+}
+
+.image-slide-transition {
+  width: 100%; /* Ensure wrapper takes full space for positioning image */
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: slideInFromRight 0.5s ease-out forwards;
 }
