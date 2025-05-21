@@ -11,6 +11,7 @@ import axios from 'axios';
 // import AdminToggleButton from './AdminToggleButton';
 // import AdminPanel, { SlideDetailsData } from './AdminPanel';
 import { SlideDetailsData } from './SlideEditor'; // Ensure this type comes from SlideEditor now
+import { SlideTransition, defaultTransition } from './slideTransitions';
 
 const API_URL = '/api'; 
 
@@ -23,6 +24,7 @@ interface SlideDetailsApiResponse {
 function App() {
   const [preloadedRotations, setPreloadedRotations] = useState<Record<string, number> | null>(null);
   const [preloadedSlideDetails, setPreloadedSlideDetails] = useState<SlideDetailsApiResponse | null>(null);
+  const [activeTransition, setActiveTransition] = useState<SlideTransition>(defaultTransition);
   const [appLoading, setAppLoading] = useState(true);
   // isAdminPanelOpen and currentSlideForAdmin state are no longer needed here, 
   // as AdminPanel is in a separate route and will manage its own state or get it from AdminPortal.
@@ -31,13 +33,22 @@ function App() {
     const fetchAppData = async () => {
       try {
         console.log('App (Slideshow Page): Fetching initial data...');
-        const [rotationsResponse, slideDetailsResponse] = await Promise.all([
+        const [rotationsResponse, slideDetailsResponse, transitionResponse] = await Promise.all([
           axios.get(`${API_URL}/rotations`),
-          axios.get(`${API_URL}/slide-details`)
+          axios.get(`${API_URL}/slide-details`),
+          axios.get(`${API_URL}/slide-transition`)
         ]);
         
         setPreloadedRotations(rotationsResponse.data);
         setPreloadedSlideDetails(slideDetailsResponse.data);
+        
+        // Set active transition
+        if (transitionResponse.data && transitionResponse.data.name && transitionResponse.data.className) {
+          setActiveTransition(transitionResponse.data);
+          console.log('App (Slideshow Page): Active transition:', transitionResponse.data.name);
+        } else {
+          console.log('App (Slideshow Page): Using default transition:', defaultTransition.name);
+        }
 
         console.log('App (Slideshow Page): Preloading images...');
         const imagePromises = imageFileNames.map(fileName => {
@@ -80,10 +91,11 @@ function App() {
     <CaseClosedSlideshow 
       preloadedRotations={preloadedRotations || {}}
       preloadedSlideDetails={preloadedSlideDetails || {}} 
+      activeTransition={activeTransition}
       // onCurrentSlideChangeForAdmin is no longer needed from App directly to Slideshow for the old AdminPanel
       // If AdminPortal needs to know about the current slide in the main view (e.g. for a quick edit button),
       // a different mechanism (context or global state) would be needed.
-      key={JSON.stringify(preloadedSlideDetails)} // Re-render if details change externally
+      key={JSON.stringify(preloadedSlideDetails) + activeTransition.name} // Re-render if details or transition change externally
     />
     // ThemePanel, AdminToggleButton, AdminPanel are removed from here.
   );

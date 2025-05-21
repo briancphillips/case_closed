@@ -78,6 +78,17 @@ export const themes = [
       { name: "Redaction Red", hex: "#B23A48" },
       { name: "Brass Accent", hex: "#C39351" }
     ]
+  },
+  {
+    name: "Minimalist Red",
+    description: "A high-contrast palette of black, white, grays, with a bold red accent.",
+    colors: [
+      { name: "Primary Black", hex: "#000000" },
+      { name: "Primary White", hex: "#FFFFFF" },
+      { name: "Mid Gray", hex: "#808080" },
+      { name: "Light Gray", hex: "#BFBFBF" },
+      { name: "Accent Red", hex: "#FF0000" }
+    ]
   }
 ];
 

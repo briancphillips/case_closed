@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme, Theme } from './ThemeContext';
-import { Save, Check, Eye } from 'lucide-react';
+import { Check, Eye, Save, Plus } from 'lucide-react';
 import axios from 'axios';
+import ThemeCreator from './ThemeCreator';
 
 const API_URL = '/api';
 
 const ThemePanel: React.FC = () => {
-  const { activeTheme, setActiveTheme, availableThemes } = useTheme();
+  const { activeTheme, setActiveTheme, availableThemes, customThemes, addCustomTheme } = useTheme();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [showCreator, setShowCreator] = useState(false);
+  const [allThemes, setAllThemes] = useState<Theme[]>([]);
+
+  // Combine built-in themes with custom themes
+  useEffect(() => {
+    setAllThemes([...availableThemes, ...customThemes]);
+  }, [availableThemes, customThemes]);
 
   const applyTheme = (theme: Theme) => {
     setActiveTheme(theme);
@@ -29,52 +37,29 @@ const ThemePanel: React.FC = () => {
     }
   };
 
-  return (
-    <div className="h-full flex flex-col text-gray-800 pt-1">
-      <div className="p-1 overflow-y-auto flex-grow custom-scrollbar border-b border-gray-700">
-        <h3 className="text-lg font-semibold mb-3 text-gray-100 sticky top-0 bg-gray-800 py-2 z-10 px-1">Available Themes</h3>
-        
-        <div className="space-y-3 pr-1">
-          {availableThemes.map((theme, index) => (
-            <div
-              key={index}
-              className={`p-3 rounded-lg cursor-pointer transition-colors shadow-md ${
-                activeTheme.name === theme.name
-                  ? 'bg-blue-700 border-2 border-blue-500 text-white'
-                  : 'bg-gray-700 hover:bg-gray-650 text-gray-200'
-              }`}
-            >
-              <div className="flex justify-between items-center mb-1">
-                <h4 className="font-medium">{theme.name}</h4>
-                <div className="flex items-center">
-                  <button 
-                    onClick={() => applyTheme(theme)}
-                    className={`p-1 rounded hover:bg-blue-500 ${activeTheme.name === theme.name ? 'text-white' : 'text-blue-400'}`}
-                    title="Apply Theme"
-                  >
-                    <Eye size={16} />
-                  </button>
-                </div>
-              </div>
-              
-              <p className={`text-sm mb-2 ${activeTheme.name === theme.name ? 'text-blue-100' : 'text-gray-400'}`}>{theme.description}</p>
-              
-              <div className="flex h-6 rounded-md overflow-hidden">
-                {theme.colors.map((color, i) => (
-                  <div 
-                    key={i} 
-                    className="flex-1 border border-gray-600"
-                    style={{ backgroundColor: color.hex }}
-                    title={`${color.name} (${color.hex})`}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+  const handleThemeCreated = (newTheme: Theme) => {
+    // Add to custom themes
+    addCustomTheme(newTheme);
+    // Apply the new theme
+    setActiveTheme(newTheme);
+    // Close the creator
+    setShowCreator(false);
+  };
 
-      <div className="p-1 flex-shrink-0 mt-4">
+  return (
+    <div className="h-full flex flex-col text-gray-800 pt-1 relative">
+      {showCreator && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="max-w-lg w-full">
+            <ThemeCreator 
+              onThemeCreated={handleThemeCreated} 
+              onCancel={() => setShowCreator(false)} 
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="p-1 flex-shrink-0 mb-4 border-b border-gray-700 pb-4">
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-lg font-semibold text-gray-100">Active Theme</h3>
           <button
@@ -117,6 +102,58 @@ const ThemePanel: React.FC = () => {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="p-1 overflow-y-auto flex-grow custom-scrollbar">
+        <div className="flex justify-between items-center mb-3 sticky top-0 bg-gray-800 py-2 z-10 px-1">
+          <h3 className="text-lg font-semibold text-gray-100">Available Themes</h3>
+          <button
+            onClick={() => setShowCreator(true)}
+            className="p-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white flex items-center text-sm"
+            title="Create New Theme"
+          >
+            <Plus size={16} className="mr-1" /> New Theme
+          </button>
+        </div>
+        
+        <div className="space-y-3 pr-1">
+          {allThemes.map((theme, index) => (
+            <div
+              key={theme.name}
+              className={`p-3 rounded-lg cursor-pointer transition-colors shadow-md ${
+                activeTheme.name === theme.name
+                  ? 'bg-blue-700 border-2 border-blue-500 text-white'
+                  : 'bg-gray-700 hover:bg-gray-650 text-gray-200'
+              }`}
+            >
+              <div className="flex justify-between items-center mb-1">
+                <h4 className="font-medium">{theme.name}</h4>
+                <div className="flex items-center">
+                  <button 
+                    onClick={() => applyTheme(theme)}
+                    className={`p-1 rounded hover:bg-blue-500 ${activeTheme.name === theme.name ? 'text-white' : 'text-blue-400'}`}
+                    title="Apply Theme"
+                  >
+                    <Eye size={16} />
+                  </button>
+                </div>
+              </div>
+              
+              <p className={`text-sm mb-2 ${activeTheme.name === theme.name ? 'text-blue-100' : 'text-gray-400'}`}>{theme.description}</p>
+              
+              <div className="flex h-6 rounded-md overflow-hidden">
+                {theme.colors.map((color, i) => (
+                  <div 
+                    key={i} 
+                    className="flex-1 border border-gray-600"
+                    style={{ backgroundColor: color.hex }}
+                    title={`${color.name} (${color.hex})`}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

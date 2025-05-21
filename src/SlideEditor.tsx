@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X } from 'lucide-react'; // Assuming X is still used for a close button if needed, though it might be part of AdminPortal now.
+import { X, RotateCw, RotateCcw } from 'lucide-react'; // Added rotation icons
 
 const API_URL = '/api';
 
@@ -37,6 +37,21 @@ const SlideEditor: React.FC<SlideEditorProps> = ({
   const [isHidden, setIsHidden] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rotations, setRotations] = useState<Record<string, number>>({});
+  const [isSavingRotation, setIsSavingRotation] = useState(false);
+
+  // Fetch rotations on component mount
+  useEffect(() => {
+    const fetchRotations = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/rotations`);
+        setRotations(response.data || {});
+      } catch (error) {
+        console.error('Error fetching rotations:', error);
+      }
+    };
+    fetchRotations();
+  }, []);
 
   useEffect(() => {
     if (currentSlideshowImageSrc) {
@@ -93,6 +108,43 @@ const SlideEditor: React.FC<SlideEditorProps> = ({
     }
   };
 
+  // Get current rotation or default to 0
+  const getCurrentRotation = () => {
+    if (!selectedAdminImageSrc) return 0;
+    return rotations[selectedAdminImageSrc] || 0;
+  };
+
+  // Rotate image and save rotation
+  const rotateImage = async (direction: 'clockwise' | 'counterclockwise') => {
+    if (!selectedAdminImageSrc) return;
+    
+    const degrees = direction === 'clockwise' ? 90 : -90;
+    const currentRotation = getCurrentRotation();
+    const newRotation = ((currentRotation + degrees) % 360 + 360) % 360;
+    
+    setIsSavingRotation(true);
+    try {
+      const response = await axios.post(`${API_URL}/rotations`, {
+        imagePath: selectedAdminImageSrc,
+        rotation: newRotation
+      });
+      
+      if (response.data.success) {
+        setRotations(prev => ({
+          ...prev,
+          [selectedAdminImageSrc]: newRotation
+        }));
+      } else {
+        setError("Failed to save rotation");
+      }
+    } catch (err) {
+      console.error("Error saving rotation:", err);
+      setError("Failed to save rotation");
+    } finally {
+      setIsSavingRotation(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full pt-3">
       {/* List of all images */}
@@ -127,9 +179,37 @@ const SlideEditor: React.FC<SlideEditorProps> = ({
       <div className="p-4 flex-grow flex flex-col justify-between">
         {selectedAdminImageSrc ? (
           <div className="flex-grow flex flex-col">
-            <div className="mb-3 text-center">
-              <img src={`/${selectedAdminImageSrc}`} alt="Selected slide preview" className="w-full h-auto max-h-40 object-contain rounded-md mb-1 bg-gray-700 inline-block"/>
+            <div className="mb-3 text-center relative">
+              <div className="relative inline-block">
+                <img 
+                  src={`/${selectedAdminImageSrc}`} 
+                  alt="Selected slide preview" 
+                  className="w-full h-auto max-h-40 object-contain rounded-md mb-1 bg-gray-700 inline-block"
+                  style={{ transform: `rotate(${getCurrentRotation()}deg)`, transition: 'transform 0.3s ease' }}
+                />
+                <div className="absolute top-2 right-2 flex space-x-2 bg-gray-800 bg-opacity-75 rounded-md p-1">
+                  <button
+                    onClick={() => rotateImage('counterclockwise')}
+                    disabled={isSavingRotation}
+                    className="p-1 rounded-full hover:bg-gray-700 text-blue-400"
+                    title="Rotate Left"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                  <button
+                    onClick={() => rotateImage('clockwise')}
+                    disabled={isSavingRotation}
+                    className="p-1 rounded-full hover:bg-gray-700 text-blue-400"
+                    title="Rotate Right"
+                  >
+                    <RotateCw size={16} />
+                  </button>
+                </div>
+              </div>
               <p className="text-xs text-gray-500 truncate">{selectedAdminImageSrc}</p>
+              {getCurrentRotation() !== 0 && (
+                <p className="text-xs text-blue-400">Rotation: {getCurrentRotation()}°</p>
+              )}
             </div>
             
             <label htmlFor="slideTitleAdmin" className="block text-sm font-medium text-gray-300 mb-1">Title</label>

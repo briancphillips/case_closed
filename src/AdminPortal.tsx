@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import ThemePanel from './ThemePanel'; // Import ThemePanel
+import TransitionPanel from './TransitionPanel'; // Import TransitionPanel
 import SlideEditor, { SlideDetailsData } from './SlideEditor'; // Renamed from AdminPanel
 import { imageFileNames } from './slideData'; // To get the list of all files
 import axios from 'axios';
+import { Link } from 'react-router-dom'; // Import Link component
+import { Home, Palette, Film } from 'lucide-react'; // Added Palette and Film icons
+import { useTheme } from './ThemeContext'; // Import useTheme hook
 
 const API_URL = '/api';
 
@@ -12,10 +16,12 @@ interface SlideDetailsApiResponse {
 
 // Basic placeholder for Admin Portal
 const AdminPortal: React.FC = () => {
+  const { activeTheme } = useTheme(); // Get active theme
   // State for slide details - AdminPortal will own this now
   const [slideDetails, setSlideDetails] = useState<SlideDetailsApiResponse | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [activeDisplayTab, setActiveDisplayTab] = useState<'themes' | 'transitions'>('themes');
 
   // Enable scrolling for admin portal only
   useEffect(() => {
@@ -68,28 +74,94 @@ const AdminPortal: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-6 flex flex-col mt-5 overflow-auto">
-      <header className="mb-6 md:mb-8 flex-shrink-0">
-        <h1 className="text-3xl md:text-4xl font-bold text-center md:text-left text-blue-400">Admin Portal</h1>
-        <p className="text-center md:text-left text-gray-400 text-sm">Manage slideshow themes and content.</p>
+    <div 
+      className="min-h-screen text-white p-4 md:p-6 flex flex-col mt-5 overflow-auto"
+      style={{ backgroundColor: '#111827' }} // Use a fixed neutral dark gray for Admin bg
+    >
+      <header className="mb-6 md:mb-8 flex-shrink-0 flex justify-between items-center">
+        <div>
+          <h1 
+            className="text-3xl md:text-4xl font-bold"
+            style={{ color: activeTheme.colors[1]?.hex || '#3B82F6' }} // Use secondary theme color for title
+          >Admin Portal</h1>
+          <p 
+            className="text-sm"
+            style={{ color: activeTheme.colors[3]?.hex || '#9CA3AF' }} // Use quaternary theme color for subtitle
+          >Manage slideshow themes and content.</p>
+        </div>
+        <Link 
+          to="/" 
+          className="flex items-center px-4 py-2 rounded-lg transition-colors text-white"
+          style={{
+            backgroundColor: activeTheme.colors[1]?.hex || '#2563EB', // Secondary theme for button bg
+            color: `var(--text-on-secondary)` // Contrast text for button
+          }}
+          onMouseOver={(e) => e.currentTarget.style.backgroundColor = activeTheme.colors[2]?.hex || '#1D4ED8'} // Tertiary theme for hover
+          onMouseOut={(e) => e.currentTarget.style.backgroundColor = activeTheme.colors[1]?.hex || '#2563EB'}
+          title="Go to Slideshow"
+        >
+          <Home size={20} className="mr-2" />
+          View Slideshow
+        </Link>
       </header>
       
       {/* Main content area - takes remaining height */}
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 overflow-hidden"> {/* Added overflow-hidden */}
-        {/* Column 1: Settings (Theme Panel) */}
-        <div className="lg:col-span-1 bg-gray-800 rounded-xl shadow-2xl flex flex-col overflow-hidden"> {/* Added overflow-hidden */}
-          <h2 className="text-xl md:text-2xl font-semibold border-b border-gray-700 pb-3 p-4 flex-shrink-0 bg-gray-800 z-10">Display Settings</h2>
-          {/* Removed overflow-y-auto, p-3. Kept flex-grow. ThemePanel will handle its own padding and scroll. */}
-          <div className="flex-grow"> 
-            <ThemePanel />
+        {/* Column 1: Settings (Theme Panel & Transition Panel) */}
+        <div className="lg:col-span-1 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+          <div className="border-b flex" style={{ borderColor: activeTheme.colors[2]?.hex || '#4B5563' }}>
+            <button 
+              onClick={() => setActiveDisplayTab('themes')}
+              className={`flex-1 p-3 text-center font-medium transition-colors flex items-center justify-center
+                          ${
+                            activeDisplayTab === 'themes' 
+                              ? 'border-b-2' 
+                              : 'opacity-70 hover:opacity-100'
+                          }`}
+              style={{
+                color: activeDisplayTab === 'themes' ? (activeTheme.colors[1]?.hex || '#E5E7EB') : (activeTheme.colors[3]?.hex || '#9CA3AF'),
+                borderColor: activeDisplayTab === 'themes' ? (activeTheme.colors[1]?.hex || '#E5E7EB') : 'transparent'
+              }}
+            >
+              <Palette size={18} className="mr-2" /> Themes
+            </button>
+            <button 
+              onClick={() => setActiveDisplayTab('transitions')}
+              className={`flex-1 p-3 text-center font-medium transition-colors flex items-center justify-center
+                          ${
+                            activeDisplayTab === 'transitions' 
+                              ? 'border-b-2' 
+                              : 'opacity-70 hover:opacity-100'
+                          }`}
+               style={{
+                color: activeDisplayTab === 'transitions' ? (activeTheme.colors[1]?.hex || '#E5E7EB') : (activeTheme.colors[3]?.hex || '#9CA3AF'),
+                borderColor: activeDisplayTab === 'transitions' ? (activeTheme.colors[1]?.hex || '#E5E7EB') : 'transparent'
+              }}
+            >
+              <Film size={18} className="mr-2" /> Transitions
+            </button>
+          </div>
+
+          <div className="flex-grow p-2 overflow-y-auto custom-scrollbar">
+            {activeDisplayTab === 'themes' && <ThemePanel />}
+            {activeDisplayTab === 'transitions' && <TransitionPanel />}
           </div>
         </div>
 
-        {/* Column 2: Content Management (Slide Editor) - Allow vertical scroll if content overflows */}
-        <div className="lg:col-span-2 bg-gray-800 rounded-xl shadow-2xl flex flex-col overflow-hidden"> {/* Added overflow-hidden */}
-          <h2 className="text-xl md:text-2xl font-semibold border-b border-gray-700 pb-3 p-4 flex-shrink-0 bg-gray-800 z-10">Slide Management</h2>
+        {/* Column 2: Content Management (Slide Editor) - No specific background */}
+        <div className="lg:col-span-2 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+          <h2 
+            className="text-xl md:text-2xl font-semibold border-b pb-3 p-4 flex-shrink-0 z-10"
+            style={{
+              borderColor: activeTheme.colors[2]?.hex || '#4B5563', // Tertiary theme for border
+              color: activeTheme.colors[1]?.hex || '#E5E7EB' // Secondary theme for title text (or a light gray)
+            }}
+          >Slide Management</h2>
           {loadingDetails && <p className="text-center p-4">Loading slide details...</p>}
-          {errorDetails && <p className="text-red-400 text-center p-4">Error: {errorDetails}</p>}
+          {errorDetails && <p 
+            className="text-center p-4"
+            style={{ color: activeTheme.colors[3]?.hex || '#F87171'}} // Use a theme color for error text
+          >Error: {errorDetails}</p>}
           {/* SlideEditor itself will manage its internal scrolling */}
           {!loadingDetails && !errorDetails && slideDetails && (
             <SlideEditor 
@@ -102,7 +174,10 @@ const AdminPortal: React.FC = () => {
         </div>
       </main>
 
-      <footer className="mt-6 md:mt-8 text-center text-gray-500 text-sm flex-shrink-0">
+      <footer 
+        className="mt-6 md:mt-8 text-center text-sm flex-shrink-0"
+        style={{ color: activeTheme.colors[3]?.hex || '#6B7280' }} // Use quaternary theme color for footer text
+      >
         <p>&copy; {new Date().getFullYear()} Case Closed Slideshow Admin. All rights reserved.</p>
       </footer>
     </div>

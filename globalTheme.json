@@ -1,26 +1,26 @@
 {
-  "name": "Case Files",
-  "description": "Vintage detective office colors with feminine undertones",
+  "name": "Red Velvet",
+  "description": "",
   "colors": [
     {
-      "name": "Manila Folder",
-      "hex": "#F7EDE2"
+      "name": "Primary",
+      "hex": "#d60032"
     },
     {
-      "name": "Typewriter Black",
-      "hex": "#313638"
+      "name": "Secondary",
+      "hex": "#ff3d5a"
     },
     {
-      "name": "Office Teal",
-      "hex": "#3BCEAC"
+      "name": "Tertiary",
+      "hex": "#ff7092"
     },
     {
-      "name": "Redaction Red",
-      "hex": "#B23A48"
+      "name": "Quaternary",
+      "hex": "#000000"
     },
     {
-      "name": "Brass Accent",
-      "hex": "#C39351"
+      "name": "Quinary",
+      "hex": "#7a7a7a"
     }
   ]
 }

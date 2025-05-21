@@ -4,7 +4,17 @@ import EXIF from 'exif-js';
 import axios from 'axios';
 import { useTheme } from './ThemeContext';
 import { imageFileNames } from './slideData';
-import { SlideDetailsData } from './AdminPanel';
+import { SlideTransition, defaultTransition } from './slideTransitions';
+
+interface SlideDetailsData {
+  title?: string;
+  description?: string;
+  isHidden?: boolean;
+}
+
+interface SlideDetailsApiResponse {
+  [imagePath: string]: SlideDetailsData;
+}
 
 interface Image {
   id: number;
@@ -14,15 +24,12 @@ interface Image {
   isHidden?: boolean;
 }
 
-interface SlideDetailsApiResponse {
-  [imagePath: string]: SlideDetailsData;
-}
-
 interface CaseClosedSlideshowProps {
   preloadedRotations?: Record<string, number>;
   preloadedSlideDetails?: SlideDetailsApiResponse;
   onCurrentSlideChangeForAdmin?: (slideInfo: { src: string | null; title: string; description: string }) => void;
   isAdminPanelOpen?: boolean;
+  activeTransition?: SlideTransition;
 }
 
 const API_URL = '/api';
@@ -31,7 +38,8 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   preloadedRotations, 
   preloadedSlideDetails, 
   onCurrentSlideChangeForAdmin,
-  isAdminPanelOpen
+  isAdminPanelOpen,
+  activeTransition
 }) => {
   const { activeTheme } = useTheme();
   const [images, setImages] = useState<Image[]>([]);
@@ -46,6 +54,14 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   const [naturalDimensions, setNaturalDimensions] = useState<{ width: number; height: number } | null>(null);
   const [animationKey, setAnimationKey] = useState(0);
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+  const [activeTransitionClassName, setActiveTransitionClassName] = useState<string>(
+    activeTransition?.className || defaultTransition.className
+  );
+  const [previousIndex, setPreviousIndex] = useState<number | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+  const [initialTransform, setInitialTransform] = useState<string>('translateX(0%)');
+  const [exitDirection, setExitDirection] = useState<'left' | 'right'>('left');
+  const [exitingTransform, setExitingTransform] = useState<string>('translateX(0%)');
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const slideshowRef = useRef<HTMLDivElement>(null);
@@ -60,6 +76,14 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   useEffect(() => {
     setNaturalDimensions(null); 
   }, [currentIndex]);
+
+  // Update activeTransitionClassName when activeTransition prop changes
+  useEffect(() => {
+    if (activeTransition?.className) {
+      setActiveTransitionClassName(activeTransition.className);
+      console.log("Using provided activeTransition:", activeTransition.name);
+    }
+  }, [activeTransition]);
 
   // Enhanced preloading: Preload a few slides ahead
   useEffect(() => {
@@ -175,36 +199,8 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   const handleImageLoad = () => {
     if (imageRef.current) {
       const imgElement = imageRef.current;
-      try {
-        // @ts-ignore - EXIF.js actually can work with HTMLImageElement but TS doesn't know that
-        EXIF.getData(imgElement, function() {
-          try {
-            // @ts-ignore - EXIF.js adds getTag method to the element
-            const orientation = EXIF.getTag(this, 'Orientation');
-            if (orientation) {
-              setOrientations(prev => ({
-                ...prev,
-                [currentIndex]: orientation
-              }));
-            }
-          } catch (tagError) {
-            console.warn(`Error reading EXIF Orientation tag for image ${images[currentIndex]?.src}:`, tagError);
-            // Set a default orientation or handle error gracefully if needed
-            setOrientations(prev => ({
-              ...prev,
-              [currentIndex]: 1 // Default to normal orientation
-            }));
-          }
-        });
-      } catch (exifError) {
-        console.warn(`Error initializing EXIF.getData for image ${images[currentIndex]?.src}:`, exifError);
-        // If EXIF.getData itself fails, ensure a default orientation
-        setOrientations(prev => ({
-          ...prev,
-          [currentIndex]: 1 // Default to normal orientation
-        }));
-      }
-
+      
+      // Always set dimensions first, regardless of EXIF processing
       if (imgElement.naturalWidth > 0 && imgElement.naturalHeight > 0) {
         setNaturalDimensions({ width: imgElement.naturalWidth, height: imgElement.naturalHeight });
         
@@ -218,6 +214,63 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
         }
       } else {
         setNaturalDimensions(null); 
+      }
+      
+      // Try to get EXIF data, but don't let errors interrupt the flow
+      try {
+        // Skip EXIF processing for non-JPEG images to avoid errors
+        const src = imgElement.src.toLowerCase();
+        if (!src.endsWith('.jpg') && !src.endsWith('.jpeg')) {
+          // Not a JPEG, so just set default orientation
+          setOrientations(prev => ({
+            ...prev,
+            [currentIndex]: 1 // Default to normal orientation
+          }));
+          return;
+        }
+        
+        // Process EXIF for JPEG images
+        try {
+          // @ts-ignore - EXIF.js actually can work with HTMLImageElement but TS doesn't know that
+          EXIF.getData(imgElement, function() {
+            try {
+              // @ts-ignore - EXIF.js adds getTag method to the element
+              const orientation = EXIF.getTag(this, 'Orientation');
+              if (orientation) {
+                setOrientations(prev => ({
+                  ...prev,
+                  [currentIndex]: orientation
+                }));
+              } else {
+                // No orientation tag found
+                setOrientations(prev => ({
+                  ...prev,
+                  [currentIndex]: 1 // Default to normal orientation
+                }));
+              }
+            } catch (tagError) {
+              console.warn(`Error reading EXIF Orientation tag for image ${images[currentIndex]?.src}:`, tagError);
+              // Set a default orientation or handle error gracefully if needed
+              setOrientations(prev => ({
+                ...prev,
+                [currentIndex]: 1 // Default to normal orientation
+              }));
+            }
+          });
+        } catch (exifError) {
+          console.warn(`Error initializing EXIF.getData for image ${images[currentIndex]?.src}:`, exifError);
+          // If EXIF.getData itself fails, ensure a default orientation
+          setOrientations(prev => ({
+            ...prev,
+            [currentIndex]: 1 // Default to normal orientation
+          }));
+        }
+      } catch (error) {
+        console.error("Complete failure in EXIF processing:", error);
+        setOrientations(prev => ({
+          ...prev,
+          [currentIndex]: 1 // Default to normal orientation
+        }));
       }
     } else {
       setNaturalDimensions(null);
@@ -246,18 +299,73 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   // Memoize goToNextSlide to stabilize its reference for useEffect dependency array
   const memoizedGoToNextSlide = useCallback(() => {
     if (images.length === 0) return;
+    setPreviousIndex(currentIndex);
     setCurrentIndex((prevIndex) => (prevIndex === images.length - 1 ? 0 : prevIndex + 1));
-    requestAnimationFrame(() => {
-      setAnimationKey(prevKey => prevKey + 1);
-    });
-  }, [images.length]); // Dependency: images.length
+    setIsTransitioning(true);
+    setExitDirection('left'); // When going next, the previous slide exits to the left
+    setExitingTransform('translateX(0%)'); // Reset exiting transform
+    
+    // Set initial transform based on active transition
+    if (activeTransitionClassName === 'transition-slide-left') {
+      setInitialTransform('translateX(200%)'); // New slide comes in from the right
+      
+      // Reset transform after a short delay to allow the browser to render the initial position
+      setTimeout(() => {
+        setInitialTransform('translateX(0%)');
+        setExitingTransform('translateX(-200%)'); // Move exiting slide left
+      }, 50);
+    } else if (activeTransitionClassName === 'transition-zoom-in') {
+      setInitialTransform('scale(0.5)');
+      
+      setTimeout(() => {
+        setInitialTransform('scale(1)');
+        setExitingTransform('scale(1.5)'); // Zoom out exiting slide
+      }, 50);
+    }
+  }, [images.length, currentIndex, activeTransitionClassName]);
+
+  // Reset auto-advance timer
+  const resetAutoAdvanceTimer = useCallback(() => {
+    // Clear any existing timer
+    if (autoAdvanceTimerRef.current !== null) {
+      clearInterval(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    
+    // Set a new timer if conditions are right
+    if (!isZoomed && !isAdminPanelOpen && images.length > 0) {
+      autoAdvanceTimerRef.current = window.setInterval(() => {
+        // Use the function we pass rather than direct reference to avoid circular dependency
+        memoizedGoToNextSlide();
+      }, 5000);
+    }
+  }, [isZoomed, isAdminPanelOpen, images.length, memoizedGoToNextSlide]);
 
   const goToPreviousSlide = () => {
     if (images.length === 0) return;
+    setPreviousIndex(currentIndex);
     setCurrentIndex((prevIndex) => (prevIndex === 0 ? images.length - 1 : prevIndex - 1));
-    requestAnimationFrame(() => {
-      setAnimationKey(prevKey => prevKey + 1);
-    });
+    setIsTransitioning(true);
+    setExitDirection('right'); // When going previous, the previous slide exits to the right
+    setExitingTransform('translateX(0%)'); // Reset exiting transform
+    
+    // Set initial transform based on active transition but in the opposite direction for previous
+    if (activeTransitionClassName === 'transition-slide-left') {
+      setInitialTransform('translateX(-200%)'); // New slide comes in from the left
+      
+      // Reset transform after a short delay to allow the browser to render the initial position
+      setTimeout(() => {
+        setInitialTransform('translateX(0%)');
+        setExitingTransform('translateX(200%)'); // Move exiting slide right
+      }, 50);
+    } else if (activeTransitionClassName === 'transition-zoom-in') {
+      setInitialTransform('scale(0.5)');
+      
+      setTimeout(() => {
+        setInitialTransform('scale(1)');
+        setExitingTransform('scale(1.5)'); // Zoom out exiting slide
+      }, 50);
+    }
   };
 
   const toggleFullscreen = () => {
@@ -303,11 +411,25 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
     setIsZoomed(!isZoomed);
   };
 
-  const getTransform = () => {
-    let transform = 'none';
-    
+  // Get container background style
+  const getContainerBackgroundStyle = () => {
+    return {
+      backgroundColor: 'transparent',
+      borderRadius: '8px',
+      padding: '4px',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: containerSize ? `${containerSize.width}px` : '100%',
+      height: containerSize ? `${containerSize.height}px` : '100%',
+      minHeight: '400px'
+    };
+  };
+
+  // Get transform for the current image
+  const getImageTransform = () => {
     const currentImagePath = images[currentIndex]?.src;
-    if (!currentImagePath) return transform;
+    if (!currentImagePath) return 'none';
     
     const normalizedPath = currentImagePath.replace(/^\//, '');
     
@@ -316,16 +438,40 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
     }
     
     if (orientations[currentIndex]) {
-      transform = getRotationTransform(orientations[currentIndex]);
+      return getRotationTransform(orientations[currentIndex]);
     }
     
-    return transform;
+    return 'none';
+  };
+
+  // Get transform for a previous image
+  const getPreviousImageTransform = () => {
+    if (previousIndex === null) return 'none';
+    
+    const prevImagePath = images[previousIndex]?.src;
+    if (!prevImagePath) return 'none';
+    
+    const normalizedPath = prevImagePath.replace(/^\//, '');
+    
+    if (manualRotations[normalizedPath] !== undefined) {
+      return `rotate(${manualRotations[normalizedPath]}deg)`;
+    }
+    
+    if (orientations[previousIndex]) {
+      return getRotationTransform(orientations[previousIndex]);
+    }
+    
+    return 'none';
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') memoizedGoToNextSlide();
-      if (e.key === 'ArrowLeft') goToPreviousSlide();
+      if (e.key === 'ArrowRight') {
+        memoizedGoToNextSlide();
+      }
+      if (e.key === 'ArrowLeft') {
+        goToPreviousSlide();
+      }
       if (e.key === 'Escape' && isFullscreen) toggleFullscreen();
     };
 
@@ -336,18 +482,9 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
     };
   }, [currentIndex, images.length, isFullscreen, memoizedGoToNextSlide]);
 
-  // Setup auto-advance with proper cleanup
+  // Setup auto-advance and handle changes to relevant state
   useEffect(() => {
-    if (autoAdvanceTimerRef.current !== null) {
-      clearInterval(autoAdvanceTimerRef.current);
-      autoAdvanceTimerRef.current = null; 
-    }
-    
-    if (!isZoomed && !isAdminPanelOpen && images.length > 0) { 
-      autoAdvanceTimerRef.current = window.setInterval(() => {
-        memoizedGoToNextSlide();
-      }, 5000);
-    }
+    resetAutoAdvanceTimer();
     
     return () => {
       if (autoAdvanceTimerRef.current !== null) {
@@ -355,7 +492,20 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
         autoAdvanceTimerRef.current = null;
       }
     };
-  }, [isZoomed, isAdminPanelOpen, images.length, memoizedGoToNextSlide]); // Updated dependencies
+  }, [isZoomed, isAdminPanelOpen, images.length, resetAutoAdvanceTimer]);
+
+  // Reset timer when currentIndex changes (manual navigation)
+  useEffect(() => {
+    resetAutoAdvanceTimer();
+    
+    if (isTransitioning) {
+      const timer = setTimeout(() => {
+        setIsTransitioning(false);
+        setPreviousIndex(null); // Clear previous index after transition
+      }, 1500); // Match transition duration (1.5s)
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, resetAutoAdvanceTimer, isTransitioning]);
 
   // Update resize handler
   useEffect(() => {
@@ -372,33 +522,13 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Get container background style
-  const getContainerBackgroundStyle = () => {
-    return {
-      backgroundColor: 'transparent',
-      // boxShadow: `0 10px 25px rgba(0, 0, 0, 0.3)`,
-      borderRadius: '8px',
-      padding: '4px',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      transform: getTransform(),
-      transition: 'transform 0.3s ease-in-out',
-      
-      width: containerSize ? `${containerSize.width}px` : '100%',
-      height: containerSize ? `${containerSize.height}px` : '100%',
-      minHeight: '400px',
-      overflow: 'hidden'
-    };
-  };
-
   return (
     <div
       ref={slideshowRef}
       className={`min-h-screen w-full bg-primary text-quaternary`}
       style={{
         backgroundColor: activeTheme.colors[0].hex,
-        color: activeTheme.colors[3].hex || '#ffffff'
+        color: `var(--text-on-primary)`
       }}
     >
       {loading ? (
@@ -409,35 +539,21 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
         <div className="flex flex-col h-screen">
           <div 
             className="p-4 flex justify-between items-center border-b border-tertiary flex-shrink-0"
-            style={{ borderColor: activeTheme.colors[2].hex }}
+            style={{ 
+              borderColor: activeTheme.colors[2].hex,
+              color: `var(--text-on-primary)`
+            }}
           >
             <h1 className="text-2xl font-bold">
               {images[currentIndex] ? `Case File #${images[currentIndex].id}: ${images[currentIndex].title}` : 'Case Closed'}
             </h1>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => rotateImage('counterclockwise')}
-                className="p-2 rounded-full hover:bg-secondary transition-colors"
-                style={{ backgroundColor: 'transparent' }}
-                title="Rotate Left"
-                disabled={isSaving}
-              >
-                <RotateCcw className="w-6 h-6" />
-              </button>
-              <button
-                onClick={() => rotateImage('clockwise')}
-                className="p-2 rounded-full hover:bg-secondary transition-colors"
-                style={{ backgroundColor: 'transparent' }}
-                title="Rotate Right"
-                disabled={isSaving}
-              >
-                <RotateCw className="w-6 h-6" />
-              </button>
-              <button
                 onClick={toggleFullscreen}
                 className="p-2 rounded-full hover:bg-secondary transition-colors"
                 style={{ 
                   backgroundColor: 'transparent',
+                  color: `var(--text-on-primary)`
                 }}
                 title="Toggle Fullscreen"
               >
@@ -451,28 +567,83 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
             ref={containerRef}
           >
             <div
-              className="image-container relative overflow-hidden max-w-5xl mx-auto"
+              className="image-container relative max-w-5xl mx-auto"
               style={getContainerBackgroundStyle()}
             >
-              {images.length > 0 && images[currentIndex] && (
-                <div 
-                  key={animationKey} 
-                  className="image-slide-transition w-full h-full flex items-center justify-center"
-                >
-                  <img
-                    ref={imageRef}
-                    src={images[currentIndex].src}
-                    alt={images[currentIndex].title}
-                    className={`object-contain ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      width: 'auto',
-                      height: 'auto'
-                    }}
-                    onClick={toggleZoom}
-                    onLoad={handleImageLoad}
-                  />
+              {images.length > 0 && (
+                <div className="slide-container">
+                  {/* Current (Incoming) Slide */}
+                  {images[currentIndex] && (
+                    <div
+                      key={`slide-${currentIndex}`}
+                      className={`slide ${activeTransitionClassName} active`}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 1,
+                        zIndex: 2,
+                        transform: initialTransform,
+                        transition: 'transform 1.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 1.5s ease-in-out'
+                      }}
+                    >
+                      <img
+                        ref={imageRef}
+                        src={images[currentIndex].src}
+                        alt={images[currentIndex].title}
+                        className={`object-contain ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          width: 'auto',
+                          height: 'auto',
+                          transform: getImageTransform()
+                        }}
+                        onClick={toggleZoom}
+                        onLoad={handleImageLoad}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Previous (Exiting) Slide */}
+                  {isTransitioning && previousIndex !== null && images[previousIndex] && (
+                    <div
+                      key={`slide-${previousIndex}-exiting`}
+                      className={`slide ${activeTransitionClassName} exiting`}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: exitingTransform === 'translateX(0%)' ? 1 : 0.5, // Keep partially visible during exit
+                        zIndex: 1,
+                        transform: exitingTransform, // Use the exitingTransform state
+                        transition: 'transform 1.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 1.5s ease-in-out'
+                      }}
+                    >
+                      <img
+                        src={images[previousIndex].src}
+                        alt={images[previousIndex].title}
+                        className="object-contain"
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          width: 'auto',
+                          height: 'auto',
+                          transform: getPreviousImageTransform()
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -492,7 +663,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
               className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
               style={{ 
                 backgroundColor: activeTheme.colors[1].hex,
-                color: activeTheme.colors[2].hex
+                color: `var(--text-on-secondary)`
               }}
             >
               <ChevronLeft className="w-8 h-8" />
@@ -502,7 +673,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
               className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
               style={{ 
                 backgroundColor: activeTheme.colors[1].hex,
-                color: activeTheme.colors[2].hex
+                color: `var(--text-on-secondary)`
               }}
             >
               <ChevronRight className="w-8 h-8" />
@@ -513,7 +684,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
             className="p-4 bg-secondary text-center flex-shrink-0 border-t"
             style={{ 
               backgroundColor: activeTheme.colors[1].hex,
-              color: '#ffffff',
+              color: `var(--text-on-secondary)`,
               borderColor: activeTheme.colors[2].hex
             }}
           >

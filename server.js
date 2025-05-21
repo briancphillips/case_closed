@@ -64,6 +64,36 @@ if (!fs.existsSync(GLOBAL_THEME_FILE)) {
   }
 }
 
+// Data file for storing slide transition
+const SLIDE_TRANSITION_FILE = path.join(__dirname, "slideTransition.json");
+
+// Initialize slide transition file if it doesn't exist
+if (!fs.existsSync(SLIDE_TRANSITION_FILE)) {
+  console.log(
+    `Creating new slide transition file at: ${SLIDE_TRANSITION_FILE}`
+  );
+  // Default to a standard fade transition or the first one in your list
+  const defaultTransition = {
+    name: "Fade",
+    className: "transition-fade",
+  };
+  fs.writeFileSync(
+    SLIDE_TRANSITION_FILE,
+    JSON.stringify(defaultTransition, null, 2),
+    "utf8"
+  );
+} else {
+  console.log(
+    `Using existing slide transition file at: ${SLIDE_TRANSITION_FILE}`
+  );
+  try {
+    fs.accessSync(SLIDE_TRANSITION_FILE, fs.constants.W_OK);
+    console.log("Slide transition file is writeable");
+  } catch (err) {
+    console.error("WARNING: Cannot write to slide transition file:", err);
+  }
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -198,6 +228,43 @@ app.post("/api/global-theme", (req, res) => {
   } catch (error) {
     console.error("Error saving global theme:", error);
     res.status(500).json({ error: "Failed to save global theme" });
+  }
+});
+
+// Get current slide transition
+app.get("/api/slide-transition", (req, res) => {
+  try {
+    const transition = JSON.parse(
+      fs.readFileSync(SLIDE_TRANSITION_FILE, "utf8")
+    );
+    res.json(transition);
+  } catch (error) {
+    console.error("Error reading slide transition:", error);
+    res.status(500).json({ error: "Failed to read slide transition" });
+  }
+});
+
+// Set slide transition
+app.post("/api/slide-transition", (req, res) => {
+  try {
+    const transition = req.body;
+    // Basic validation for the transition object
+    if (
+      !transition ||
+      typeof transition.name !== "string" ||
+      typeof transition.className !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid slide transition object" });
+    }
+    fs.writeFileSync(
+      SLIDE_TRANSITION_FILE,
+      JSON.stringify(transition, null, 2),
+      "utf8"
+    );
+    res.json({ success: true, transition });
+  } catch (error) {
+    console.error("Error saving slide transition:", error);
+    res.status(500).json({ error: "Failed to save slide transition" });
   }
 });
 
