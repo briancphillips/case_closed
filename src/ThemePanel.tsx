@@ -47,7 +47,7 @@ const ThemePanel: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col text-gray-800 pt-1 relative">
+    <div className="h-full w-full flex flex-col text-gray-800 pt-1 relative">
       {showCreator && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="max-w-lg w-full">

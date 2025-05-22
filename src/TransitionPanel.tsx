@@ -57,7 +57,7 @@ const TransitionPanel: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col pt-1" style={{ color: `var(--text-on-quinary)` }}>
+    <div className="h-full w-full flex flex-col pt-1 text-gray-100">
       {/* Active Transition Display */}
       <div className="p-1 flex-shrink-0 mb-4 border-b pb-4" style={{ borderColor: activeTheme.colors[2]?.hex || '#4B5563' }}>
         <div className="flex justify-between items-center mb-2">
@@ -88,11 +88,11 @@ const TransitionPanel: React.FC = () => {
         <div className="p-3 rounded-lg" style={{ backgroundColor: activeTheme.colors[0] ? activeTheme.colors[0].hex : '#374151' }}>
           <h4 
             className="font-medium mb-1"
-            style={{ color: activeTheme.colors[1] ? `var(--text-on-primary)` : '#E5E7EB' }}
+            style={{ color: activeTheme.colors[0] ? `var(--text-on-primary)` : '#E5E7EB' }}
           >
             {activeTransition.name}
           </h4>
-          <p className="text-sm" style={{ color: activeTheme.colors[3] ? `var(--text-on-primary)` : '#D1D5DB' }}>
+          <p className="text-sm" style={{ color: activeTheme.colors[0] ? `var(--text-on-primary)` : '#D1D5DB' }}>
             Applies animation: <code className="text-xs p-0.5 rounded" style={{backgroundColor: activeTheme.colors[2]?.hex, color: `var(--text-on-tertiary)`}}>{activeTransition.className}</code>
           </p>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Maximize, RotateCcw, RotateCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize, RotateCcw, RotateCw, Focus } from 'lucide-react';
 import EXIF from 'exif-js';
 import axios from 'axios';
 import { useTheme } from './ThemeContext';
@@ -45,7 +45,8 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   const [images, setImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
+  const [isImmersiveModeActive, setIsImmersiveModeActive] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [orientations, setOrientations] = useState<Record<number, number>>({});
   const [manualRotations, setManualRotations] = useState<Record<string, number>>({});
@@ -321,6 +322,10 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
         setInitialTransform('scale(1)');
         setExitingTransform('scale(1.5)'); // Zoom out exiting slide
       }, 50);
+    } else {
+      // For fade or other non-transform transitions
+      setInitialTransform('none');
+      setExitingTransform('none');
     }
   }, [images.length, currentIndex, activeTransitionClassName]);
 
@@ -365,40 +370,43 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
         setInitialTransform('scale(1)');
         setExitingTransform('scale(1.5)'); // Zoom out exiting slide
       }, 50);
+    } else {
+      // For fade or other non-transform transitions
+      setInitialTransform('none');
+      setExitingTransform('none');
     }
   };
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      if (slideshowRef.current && slideshowRef.current.requestFullscreen) {
-        slideshowRef.current.requestFullscreen()
-          .then(() => {
-            setIsFullscreen(true);
-          })
-          .catch(err => {
-            console.error(`Error attempting to enable fullscreen: ${err.message}`);
-          });
-      } else {
-        setIsFullscreen(true);
+  const toggleStandardFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      slideshowRef.current?.requestFullscreen();
+      setIsImmersiveModeActive(false);
+    }
+  };
+
+  const toggleImmersiveMode = () => {
+    if (isImmersiveModeActive) {
+      setIsImmersiveModeActive(false);
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
       }
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen()
-          .then(() => {
-            setIsFullscreen(false);
-          })
-          .catch(err => {
-            console.error(`Error attempting to exit fullscreen: ${err.message}`);
-          });
-      } else {
-        setIsFullscreen(false);
+      setIsImmersiveModeActive(true);
+      if (!document.fullscreenElement) {
+        slideshowRef.current?.requestFullscreen();
       }
     }
   };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const currentlyFullscreen = !!document.fullscreenElement;
+      setIsBrowserFullscreen(currentlyFullscreen);
+      if (!currentlyFullscreen) {
+        setIsImmersiveModeActive(false);
+      }
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -472,7 +480,11 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
       if (e.key === 'ArrowLeft') {
         goToPreviousSlide();
       }
-      if (e.key === 'Escape' && isFullscreen) toggleFullscreen();
+      if (e.key === 'Escape' && isBrowserFullscreen) {
+        // Standard fullscreen exit is handled by fullscreenchange event
+        // No specific call to toggleStandardFullscreen needed here as it would call exitFullscreen again
+        // If immersive mode is active, the fullscreenchange listener will also turn it off.
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -480,7 +492,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentIndex, images.length, isFullscreen, memoizedGoToNextSlide]);
+  }, [currentIndex, images.length, isBrowserFullscreen, memoizedGoToNextSlide]);
 
   // Setup auto-advance and handle changes to relevant state
   useEffect(() => {
@@ -537,30 +549,44 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
         </div>
       ) : (
         <div className="flex flex-col h-screen">
-          <div 
-            className="p-4 flex justify-between items-center border-b border-tertiary flex-shrink-0"
-            style={{ 
-              borderColor: activeTheme.colors[2].hex,
-              color: `var(--text-on-primary)`
-            }}
-          >
-            <h1 className="text-2xl font-bold">
-              {images[currentIndex] ? `Case File #${images[currentIndex].id}: ${images[currentIndex].title}` : 'Case Closed'}
-            </h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleFullscreen}
-                className="p-2 rounded-full hover:bg-secondary transition-colors"
-                style={{ 
-                  backgroundColor: 'transparent',
-                  color: `var(--text-on-primary)`
-                }}
-                title="Toggle Fullscreen"
-              >
-                <Maximize className="w-6 h-6" />
-              </button>
+          {/* Header: Conditionally hidden in immersive mode */}
+          {!isImmersiveModeActive && (
+            <div 
+              className="p-4 flex justify-between items-center border-b border-tertiary flex-shrink-0"
+              style={{ 
+                borderColor: activeTheme.colors[2].hex,
+                color: `var(--text-on-primary)`
+              }}
+            >
+              <h1 className="text-2xl font-bold">
+                {images[currentIndex] ? `Case File #${images[currentIndex].id}: ${images[currentIndex].title}` : 'Case Closed'}
+              </h1>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleStandardFullscreen}
+                  className="p-2 rounded-full hover:bg-secondary transition-colors"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    color: `var(--text-on-primary)`
+                  }}
+                  title={isBrowserFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                >
+                  <Maximize className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={toggleImmersiveMode}
+                  className="p-2 rounded-full hover:bg-secondary transition-colors"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    color: `var(--text-on-primary)`
+                  }}
+                  title={isImmersiveModeActive ? "Exit Immersive View" : "Enter Immersive View"}
+                >
+                  <Focus className="w-6 h-6" />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div
             className="relative flex flex-col items-center justify-center py-4 px-4 flex-grow overflow-hidden"
@@ -589,7 +615,9 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
                         opacity: 1,
                         zIndex: 2,
                         transform: initialTransform,
-                        transition: 'transform 1.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 1.5s ease-in-out'
+                        transition: activeTransitionClassName === 'transition-fade' 
+                                      ? 'opacity 1s ease-in-out' 
+                                      : 'transform 1.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 1.5s ease-in-out'
                       }}
                     >
                       <img
@@ -624,10 +652,11 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        opacity: exitingTransform === 'translateX(0%)' ? 1 : 0.5, // Keep partially visible during exit
                         zIndex: 1,
                         transform: exitingTransform, // Use the exitingTransform state
-                        transition: 'transform 1.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 1.5s ease-in-out'
+                        transition: activeTransitionClassName === 'transition-fade' 
+                                      ? 'opacity 1s ease-in-out' 
+                                      : 'transform 1.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 1.5s ease-in-out'
                       }}
                     >
                       <img
@@ -658,43 +687,51 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
               </div>
             </div>
 
-            <button
-              onClick={goToPreviousSlide}
-              className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
-              style={{ 
-                backgroundColor: activeTheme.colors[1].hex,
-                color: `var(--text-on-secondary)`
-              }}
-            >
-              <ChevronLeft className="w-8 h-8" />
-            </button>
-            <button
-              onClick={memoizedGoToNextSlide}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
-              style={{ 
-                backgroundColor: activeTheme.colors[1].hex,
-                color: `var(--text-on-secondary)`
-              }}
-            >
-              <ChevronRight className="w-8 h-8" />
-            </button>
+            {/* Navigation Buttons: Conditionally hidden in immersive mode */}
+            {!isImmersiveModeActive && (
+              <>
+                <button
+                  onClick={goToPreviousSlide}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
+                  style={{ 
+                    backgroundColor: activeTheme.colors[1].hex,
+                    color: `var(--text-on-secondary)`
+                  }}
+                >
+                  <ChevronLeft className="w-8 h-8" />
+                </button>
+                <button
+                  onClick={memoizedGoToNextSlide}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
+                  style={{ 
+                    backgroundColor: activeTheme.colors[1].hex,
+                    color: `var(--text-on-secondary)`
+                  }}
+                >
+                  <ChevronRight className="w-8 h-8" />
+                </button>
+              </>
+            )}
           </div>
 
-          <div
-            className="p-4 bg-secondary text-center flex-shrink-0 border-t"
-            style={{ 
-              backgroundColor: activeTheme.colors[1].hex,
-              color: `var(--text-on-secondary)`,
-              borderColor: activeTheme.colors[2].hex
-            }}
-          >
-            <div className="max-w-4xl mx-auto">
-              <p className="text-lg">{images[currentIndex]?.description || 'Loading description...'}</p>
-              <p className="text-sm mt-2">
-                {images.length > 0 ? `Image ${images.findIndex(img => img.id === images[currentIndex]?.id) + 1} of ${images.length}` : 'No images'}
-              </p>
+          {/* Bottom Description: Conditionally hidden in immersive mode */}
+          {!isImmersiveModeActive && (
+            <div
+              className="p-4 bg-secondary text-center flex-shrink-0 border-t"
+              style={{ 
+                backgroundColor: activeTheme.colors[1].hex,
+                color: `var(--text-on-secondary)`,
+                borderColor: activeTheme.colors[2].hex
+              }}
+            >
+              <div className="max-w-4xl mx-auto">
+                <p className="text-lg">{images[currentIndex]?.description || 'Loading description...'}</p>
+                <p className="text-sm mt-2">
+                  {images.length > 0 ? `Image ${images.findIndex(img => img.id === images[currentIndex]?.id) + 1} of ${images.length}` : 'No images'}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

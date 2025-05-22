@@ -75,7 +75,7 @@ const AdminPortal: React.FC = () => {
 
   return (
     <div 
-      className="min-h-screen text-white p-4 md:p-6 flex flex-col mt-5 overflow-auto"
+      className="min-h-screen w-full text-white p-4 md:p-6 flex flex-col mt-5 overflow-y-scroll"
       style={{ backgroundColor: '#111827' }} // Use a fixed neutral dark gray for Admin bg
     >
       <header className="mb-6 md:mb-8 flex-shrink-0 flex justify-between items-center">
@@ -106,9 +106,9 @@ const AdminPortal: React.FC = () => {
       </header>
       
       {/* Main content area - takes remaining height */}
-      <main className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 overflow-hidden"> {/* Added overflow-hidden */}
+      <main className="flex-grow w-full flex flex-col lg:flex-row gap-6 md:gap-8 overflow-hidden">
         {/* Column 1: Settings (Theme Panel & Transition Panel) */}
-        <div className="lg:col-span-1 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="lg:w-1/3 rounded-xl shadow-2xl flex flex-col overflow-hidden">
           <div className="border-b flex" style={{ borderColor: activeTheme.colors[2]?.hex || '#4B5563' }}>
             <button 
               onClick={() => setActiveDisplayTab('themes')}
@@ -142,14 +142,14 @@ const AdminPortal: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex-grow p-2 overflow-y-auto custom-scrollbar">
+          <div className="flex-grow p-2 overflow-y-scroll custom-scrollbar">
             {activeDisplayTab === 'themes' && <ThemePanel />}
             {activeDisplayTab === 'transitions' && <TransitionPanel />}
           </div>
         </div>
 
         {/* Column 2: Content Management (Slide Editor) - No specific background */}
-        <div className="lg:col-span-2 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="lg:w-2/3 rounded-xl shadow-2xl flex flex-col overflow-hidden">
           <h2 
             className="text-xl md:text-2xl font-semibold border-b pb-3 p-4 flex-shrink-0 z-10"
             style={{

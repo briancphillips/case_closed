@@ -1,26 +1,26 @@
 {
-  "name": "Red Velvet",
-  "description": "",
+  "name": "Final Verdict",
+  "description": "Bold, confident colors inspired by achievement and justice",
   "colors": [
     {
-      "name": "Primary",
-      "hex": "#d60032"
+      "name": "Gavel Black",
+      "hex": "#2D2A32"
     },
     {
-      "name": "Secondary",
-      "hex": "#ff3d5a"
+      "name": "Victory Gold",
+      "hex": "#FFC857"
     },
     {
-      "name": "Tertiary",
-      "hex": "#ff7092"
+      "name": "Authority Teal",
+      "hex": "#087E8B"
     },
     {
-      "name": "Quaternary",
-      "hex": "#000000"
+      "name": "Dignity White",
+      "hex": "#F5F5F5"
     },
     {
-      "name": "Quinary",
-      "hex": "#7a7a7a"
+      "name": "Evidence Plum",
+      "hex": "#9B5DE5"
     }
   ]
 }
