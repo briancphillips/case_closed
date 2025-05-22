@@ -94,6 +94,66 @@ if (!fs.existsSync(SLIDE_TRANSITION_FILE)) {
   }
 }
 
+// Data file for storing timer settings
+const TIMER_SETTINGS_FILE = path.join(__dirname, "timerSettings.json");
+
+// Initialize timer settings file if it doesn't exist
+const defaultTimerSettings = {
+  autoAdvanceInterval: 5000,
+  navigationThrottleMs: 600,
+  transitionPrepareDelayMs: 30,
+};
+
+if (!fs.existsSync(TIMER_SETTINGS_FILE)) {
+  console.log(`Creating new timer settings file at: ${TIMER_SETTINGS_FILE}`);
+  fs.writeFileSync(
+    TIMER_SETTINGS_FILE,
+    JSON.stringify(defaultTimerSettings, null, 2),
+    "utf8"
+  );
+} else {
+  console.log(`Using existing timer settings file at: ${TIMER_SETTINGS_FILE}`);
+  try {
+    // Try to parse it to ensure it's valid JSON and contains expected fields
+    let settings = JSON.parse(fs.readFileSync(TIMER_SETTINGS_FILE, "utf8"));
+    let updated = false;
+    for (const key in defaultTimerSettings) {
+      if (!settings.hasOwnProperty(key)) {
+        settings[key] = defaultTimerSettings[key];
+        updated = true;
+      }
+    }
+    if (updated) {
+      console.log("Timer settings file was missing some defaults, updated it.");
+      fs.writeFileSync(
+        TIMER_SETTINGS_FILE,
+        JSON.stringify(settings, null, 2),
+        "utf8"
+      );
+    }
+    fs.accessSync(TIMER_SETTINGS_FILE, fs.constants.W_OK);
+    console.log("Timer settings file is writeable and seems valid.");
+  } catch (err) {
+    console.error(
+      "WARNING: Error with timer settings file, attempting to re-initialize:",
+      err
+    );
+    try {
+      fs.writeFileSync(
+        TIMER_SETTINGS_FILE,
+        JSON.stringify(defaultTimerSettings, null, 2),
+        "utf8"
+      );
+      console.log("Successfully re-initialized timer settings file.");
+    } catch (initErr) {
+      console.error(
+        "FATAL: Could not initialize timer settings file:",
+        initErr
+      );
+    }
+  }
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -265,6 +325,80 @@ app.post("/api/slide-transition", (req, res) => {
   } catch (error) {
     console.error("Error saving slide transition:", error);
     res.status(500).json({ error: "Failed to save slide transition" });
+  }
+});
+
+// Get timer settings
+app.get("/api/timer-settings", (req, res) => {
+  try {
+    const settings = JSON.parse(fs.readFileSync(TIMER_SETTINGS_FILE, "utf8"));
+    res.json(settings);
+  } catch (error) {
+    console.error("Error reading timer settings:", error);
+    // Send defaults if file is corrupted or missing, and log an error
+    fs.writeFileSync(
+      TIMER_SETTINGS_FILE,
+      JSON.stringify(defaultTimerSettings, null, 2),
+      "utf8"
+    );
+    res.status(500).json(defaultTimerSettings);
+  }
+});
+
+// Save timer settings
+app.post("/api/timer-settings", (req, res) => {
+  try {
+    const newSettings = req.body;
+    console.log("Received timer settings update request:", newSettings);
+
+    // Validate and merge with defaults to ensure all keys are present
+    const settingsToSave = { ...defaultTimerSettings };
+    let hasValidChange = false;
+
+    if (
+      newSettings.hasOwnProperty("autoAdvanceInterval") &&
+      typeof newSettings.autoAdvanceInterval === "number" &&
+      newSettings.autoAdvanceInterval >= 0
+    ) {
+      settingsToSave.autoAdvanceInterval = newSettings.autoAdvanceInterval;
+      hasValidChange = true;
+    }
+    if (
+      newSettings.hasOwnProperty("navigationThrottleMs") &&
+      typeof newSettings.navigationThrottleMs === "number" &&
+      newSettings.navigationThrottleMs >= 0
+    ) {
+      settingsToSave.navigationThrottleMs = newSettings.navigationThrottleMs;
+      hasValidChange = true;
+    }
+    if (
+      newSettings.hasOwnProperty("transitionPrepareDelayMs") &&
+      typeof newSettings.transitionPrepareDelayMs === "number" &&
+      newSettings.transitionPrepareDelayMs >= 0
+    ) {
+      settingsToSave.transitionPrepareDelayMs =
+        newSettings.transitionPrepareDelayMs;
+      hasValidChange = true;
+    }
+
+    if (!hasValidChange && Object.keys(newSettings).length > 0) {
+      console.warn(
+        "Timer settings update request had no valid or recognized fields."
+      );
+      // Decide if this should be an error or just ignore unrecognized fields.
+      // For now, we'll proceed to save whatever defaults we have if no valid changes were made but fields were sent.
+    }
+
+    fs.writeFileSync(
+      TIMER_SETTINGS_FILE,
+      JSON.stringify(settingsToSave, null, 2),
+      "utf8"
+    );
+    console.log("Timer settings saved:", settingsToSave);
+    res.json({ success: true, settings: settingsToSave });
+  } catch (error) {
+    console.error("Error saving timer settings:", error);
+    res.status(500).json({ error: "Failed to save timer settings" });
   }
 });
 

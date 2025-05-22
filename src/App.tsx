@@ -12,6 +12,7 @@ import axios from 'axios';
 // import AdminPanel, { SlideDetailsData } from './AdminPanel';
 import { SlideDetailsData } from './SlideEditor'; // Ensure this type comes from SlideEditor now
 import { SlideTransition, defaultTransition } from './slideTransitions';
+import { SlideshowTimerSettings } from './case-closed-slideshow'; // Import the interface
 
 const API_URL = '/api'; 
 
@@ -25,6 +26,11 @@ function App() {
   const [preloadedRotations, setPreloadedRotations] = useState<Record<string, number> | null>(null);
   const [preloadedSlideDetails, setPreloadedSlideDetails] = useState<SlideDetailsApiResponse | null>(null);
   const [activeTransition, setActiveTransition] = useState<SlideTransition>(defaultTransition);
+  const [timerSettings, setTimerSettings] = useState<SlideshowTimerSettings>({ // Initialize with defaults
+    autoAdvanceInterval: 5000,
+    navigationThrottleMs: 600,
+    transitionPrepareDelayMs: 30,
+  });
   const [appLoading, setAppLoading] = useState(true);
   // isAdminPanelOpen and currentSlideForAdmin state are no longer needed here, 
   // as AdminPanel is in a separate route and will manage its own state or get it from AdminPortal.
@@ -33,10 +39,11 @@ function App() {
     const fetchAppData = async () => {
       try {
         console.log('App (Slideshow Page): Fetching initial data...');
-        const [rotationsResponse, slideDetailsResponse, transitionResponse] = await Promise.all([
+        const [rotationsResponse, slideDetailsResponse, transitionResponse, timerSettingsResponse] = await Promise.all([
           axios.get(`${API_URL}/rotations`),
           axios.get(`${API_URL}/slide-details`),
-          axios.get(`${API_URL}/slide-transition`)
+          axios.get(`${API_URL}/slide-transition`),
+          axios.get(`${API_URL}/timer-settings`) // Fetch timer settings
         ]);
         
         setPreloadedRotations(rotationsResponse.data);
@@ -48,6 +55,14 @@ function App() {
           console.log('App (Slideshow Page): Active transition:', transitionResponse.data.name);
         } else {
           console.log('App (Slideshow Page): Using default transition:', defaultTransition.name);
+        }
+
+        // Set timer settings
+        if (timerSettingsResponse.data) {
+          setTimerSettings(timerSettingsResponse.data);
+          console.log('App (Slideshow Page): Timer settings loaded:', timerSettingsResponse.data);
+        } else {
+          console.log('App (Slideshow Page): Using default timer settings.');
         }
 
         console.log('App (Slideshow Page): Preloading images...');
@@ -92,10 +107,11 @@ function App() {
       preloadedRotations={preloadedRotations || {}}
       preloadedSlideDetails={preloadedSlideDetails || {}} 
       activeTransition={activeTransition}
+      timerSettings={timerSettings} // Pass timerSettings as a prop
       // onCurrentSlideChangeForAdmin is no longer needed from App directly to Slideshow for the old AdminPanel
       // If AdminPortal needs to know about the current slide in the main view (e.g. for a quick edit button),
       // a different mechanism (context or global state) would be needed.
-      key={JSON.stringify(preloadedSlideDetails) + activeTransition.name} // Re-render if details or transition change externally
+      key={JSON.stringify(preloadedSlideDetails) + activeTransition.name + JSON.stringify(timerSettings)} // Add timerSettings to key
     />
     // ThemePanel, AdminToggleButton, AdminPanel are removed from here.
   );

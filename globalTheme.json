@@ -1,26 +1,26 @@
 {
-  "name": "Mystery Noir",
-  "description": "Dramatic black and white palette with vivid accent colors",
+  "name": "My Custom Theme",
+  "description": "",
   "colors": [
     {
-      "name": "Detective Black",
-      "hex": "#171717"
+      "name": "Primary",
+      "hex": "#1f1c2c"
     },
     {
-      "name": "Evidence White",
-      "hex": "#EDEDED"
+      "name": "Secondary",
+      "hex": "#4a4e68"
     },
     {
-      "name": "Clue Red",
-      "hex": "#DA0037"
+      "name": "Tertiary",
+      "hex": "#9a8d98"
     },
     {
-      "name": "Sleuth Silver",
-      "hex": "#AAAAAA"
+      "name": "Quaternary",
+      "hex": "#c9ada6"
     },
     {
-      "name": "Secret Purple",
-      "hex": "#590D82"
+      "name": "Quinary",
+      "hex": "#f5f0e0"
     }
   ]
 }

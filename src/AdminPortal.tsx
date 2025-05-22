@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import ThemePanel from './ThemePanel'; // Import ThemePanel
 import TransitionPanel from './TransitionPanel'; // Import TransitionPanel
+import TimingPanel from './TimingPanel'; // Import TimingPanel
 import SlideEditor, { SlideDetailsData } from './SlideEditor'; // Renamed from AdminPanel
 import { imageFileNames } from './slideData'; // To get the list of all files
 import axios from 'axios';
 import { Link } from 'react-router-dom'; // Import Link component
-import { Home, Palette, Film } from 'lucide-react'; // Added Palette and Film icons
+import { Home, Palette, Film, Timer } from 'lucide-react'; // Added Palette, Film, and Timer icons
 import { useTheme } from './ThemeContext'; // Import useTheme hook
 
 const API_URL = '/api';
@@ -21,7 +22,7 @@ const AdminPortal: React.FC = () => {
   const [slideDetails, setSlideDetails] = useState<SlideDetailsApiResponse | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
-  const [activeDisplayTab, setActiveDisplayTab] = useState<'themes' | 'transitions'>('themes');
+  const [activeDisplayTab, setActiveDisplayTab] = useState<'themes' | 'transitions' | 'timing'>('themes');
 
   // Enable scrolling for admin portal only
   useEffect(() => {
@@ -178,11 +179,28 @@ const AdminPortal: React.FC = () => {
             >
               <Film size={16} className="mr-2" /> Transitions
             </button>
+            <button 
+              onClick={() => setActiveDisplayTab('timing')}
+              className={`flex-1 p-3 text-center font-medium transition-all duration-200 flex items-center justify-center
+                          ${
+                            activeDisplayTab === 'timing' 
+                              ? 'border-b-2' 
+                              : 'opacity-70 hover:opacity-100'
+                          }`}
+               style={{
+                color: activeDisplayTab === 'timing' ? (activeTheme.colors[1]?.hex || '#E5E7EB') : 'rgba(255,255,255,0.6)',
+                borderColor: activeDisplayTab === 'timing' ? (activeTheme.colors[1]?.hex || '#E5E7EB') : 'transparent'
+              }}
+            >
+              <Timer size={16} className="mr-2" /> {/* Used Timer icon */}
+              Timing
+            </button>
           </div>
 
           <div className="flex-grow p-3 overflow-y-scroll custom-scrollbar">
             {activeDisplayTab === 'themes' && <ThemePanel />}
             {activeDisplayTab === 'transitions' && <TransitionPanel />}
+            {activeDisplayTab === 'timing' && <TimingPanel />}
           </div>
         </div>
 
