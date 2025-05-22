@@ -1,4 +1,4 @@
 {
-  "name": "Slide Left",
-  "className": "transition-slide-left"
+  "name": "Zoom In",
+  "className": "transition-zoom-in"
 }

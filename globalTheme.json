@@ -1,26 +1,26 @@
 {
-  "name": "Final Verdict",
-  "description": "Bold, confident colors inspired by achievement and justice",
+  "name": "Mystery Noir",
+  "description": "Dramatic black and white palette with vivid accent colors",
   "colors": [
     {
-      "name": "Gavel Black",
-      "hex": "#2D2A32"
+      "name": "Detective Black",
+      "hex": "#171717"
     },
     {
-      "name": "Victory Gold",
-      "hex": "#FFC857"
+      "name": "Evidence White",
+      "hex": "#EDEDED"
     },
     {
-      "name": "Authority Teal",
-      "hex": "#087E8B"
+      "name": "Clue Red",
+      "hex": "#DA0037"
     },
     {
-      "name": "Dignity White",
-      "hex": "#F5F5F5"
+      "name": "Sleuth Silver",
+      "hex": "#AAAAAA"
     },
     {
-      "name": "Evidence Plum",
-      "hex": "#9B5DE5"
+      "name": "Secret Purple",
+      "hex": "#590D82"
     }
   ]
 }

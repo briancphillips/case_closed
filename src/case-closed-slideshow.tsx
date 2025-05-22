@@ -304,26 +304,28 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
     setCurrentIndex((prevIndex) => (prevIndex === images.length - 1 ? 0 : prevIndex + 1));
     setIsTransitioning(true);
     setExitDirection('left'); // When going next, the previous slide exits to the left
-    setExitingTransform('translateX(0%)'); // Reset exiting transform
     
     // Set initial transform based on active transition
     if (activeTransitionClassName === 'transition-slide-left') {
-      setInitialTransform('translateX(200%)'); // New slide comes in from the right
+      // Start positions - new slide starts off-screen, current slide is visible
+      setInitialTransform('translateX(100%)'); 
+      setExitingTransform('translateX(0%)');
       
-      // Reset transform after a short delay to allow the browser to render the initial position
+      // After a short delay, move both slides to their final positions
       setTimeout(() => {
-        setInitialTransform('translateX(0%)');
-        setExitingTransform('translateX(-200%)'); // Move exiting slide left
+        setInitialTransform('translateX(0%)'); // New slide moves to center
+        setExitingTransform('translateX(-100%)'); // Current slide moves out to the left
       }, 50);
     } else if (activeTransitionClassName === 'transition-zoom-in') {
       setInitialTransform('scale(0.5)');
+      setExitingTransform('scale(1)');
       
       setTimeout(() => {
         setInitialTransform('scale(1)');
-        setExitingTransform('scale(1.5)'); // Zoom out exiting slide
+        setExitingTransform('scale(1.5)');
       }, 50);
     } else {
-      // For fade or other non-transform transitions
+      // Default to fade transition
       setInitialTransform('none');
       setExitingTransform('none');
     }
@@ -352,26 +354,28 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
     setCurrentIndex((prevIndex) => (prevIndex === 0 ? images.length - 1 : prevIndex - 1));
     setIsTransitioning(true);
     setExitDirection('right'); // When going previous, the previous slide exits to the right
-    setExitingTransform('translateX(0%)'); // Reset exiting transform
     
     // Set initial transform based on active transition but in the opposite direction for previous
     if (activeTransitionClassName === 'transition-slide-left') {
-      setInitialTransform('translateX(-200%)'); // New slide comes in from the left
+      // Start positions - new slide starts off-screen, current slide is visible
+      setInitialTransform('translateX(-100%)');
+      setExitingTransform('translateX(0%)');
       
-      // Reset transform after a short delay to allow the browser to render the initial position
+      // After a short delay, move both slides to their final positions
       setTimeout(() => {
-        setInitialTransform('translateX(0%)');
-        setExitingTransform('translateX(200%)'); // Move exiting slide right
+        setInitialTransform('translateX(0%)'); // New slide moves to center
+        setExitingTransform('translateX(100%)'); // Current slide moves out to the right
       }, 50);
     } else if (activeTransitionClassName === 'transition-zoom-in') {
       setInitialTransform('scale(0.5)');
+      setExitingTransform('scale(1)');
       
       setTimeout(() => {
         setInitialTransform('scale(1)');
-        setExitingTransform('scale(1.5)'); // Zoom out exiting slide
+        setExitingTransform('scale(1.5)');
       }, 50);
     } else {
-      // For fade or other non-transform transitions
+      // Default to fade transition
       setInitialTransform('none');
       setExitingTransform('none');
     }
@@ -537,52 +541,56 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   return (
     <div
       ref={slideshowRef}
-      className={`min-h-screen w-full bg-primary text-quaternary`}
+      className="slideshow-container min-h-screen w-full"
       style={{
         backgroundColor: activeTheme.colors[0].hex,
-        color: `var(--text-on-primary)`
+        color: `var(--text-on-primary)`,
+        fontFamily: 'Inter, system-ui, sans-serif' // Modern font
       }}
     >
       {loading ? (
         <div className="flex justify-center items-center h-screen">
-          <div className="text-2xl">Loading Case Files...</div>
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white"></div>
+            <div className="text-lg font-medium tracking-tight">Loading Case Files...</div>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col h-screen">
           {/* Header: Conditionally hidden in immersive mode */}
           {!isImmersiveModeActive && (
             <div 
-              className="p-4 flex justify-between items-center border-b border-tertiary flex-shrink-0"
+              className="px-6 py-4 flex justify-between items-center border-b flex-shrink-0"
               style={{ 
-                borderColor: activeTheme.colors[2].hex,
-                color: `var(--text-on-primary)`
+                borderColor: 'rgba(255,255,255,0.1)',
+                color: `var(--text-on-primary)`,
+                backdropFilter: 'blur(8px)',
+                backgroundColor: `${activeTheme.colors[0].hex}99` // Semi-transparent primary color
               }}
             >
-              <h1 className="text-2xl font-bold">
+              <h1 className="text-2xl font-bold tracking-tight">
                 {images[currentIndex] ? `Case File #${images[currentIndex].id}: ${images[currentIndex].title}` : 'Case Closed'}
               </h1>
               <div className="flex items-center gap-2">
                 <button
                   onClick={toggleStandardFullscreen}
-                  className="p-2 rounded-full hover:bg-secondary transition-colors"
+                  className="p-2 rounded-md hover:bg-white/10 transition-all duration-200 flex items-center justify-center"
                   style={{ 
-                    backgroundColor: 'transparent',
                     color: `var(--text-on-primary)`
                   }}
                   title={isBrowserFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
                 >
-                  <Maximize className="w-6 h-6" />
+                  <Maximize className="w-5 h-5" />
                 </button>
                 <button
                   onClick={toggleImmersiveMode}
-                  className="p-2 rounded-full hover:bg-secondary transition-colors"
+                  className="p-2 rounded-md hover:bg-white/10 transition-all duration-200 flex items-center justify-center"
                   style={{ 
-                    backgroundColor: 'transparent',
                     color: `var(--text-on-primary)`
                   }}
                   title={isImmersiveModeActive ? "Exit Immersive View" : "Enter Immersive View"}
                 >
-                  <Focus className="w-6 h-6" />
+                  <Focus className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -612,19 +620,26 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        opacity: 1,
+                        opacity: activeTransitionClassName === 'transition-fade' ? 0 : 1, // Start invisible for fade
                         zIndex: 2,
                         transform: initialTransform,
                         transition: activeTransitionClassName === 'transition-fade' 
                                       ? 'opacity 1s ease-in-out' 
                                       : 'transform 1.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 1.5s ease-in-out'
                       }}
+                      onTransitionEnd={() => {
+                        if (activeTransitionClassName === 'transition-fade') {
+                          // Ensure opacity is set to 1 after transition
+                          const elem = document.querySelector('.slide.active') as HTMLElement;
+                          if (elem) elem.style.opacity = '1';
+                        }
+                      }}
                     >
                       <img
                         ref={imageRef}
                         src={images[currentIndex].src}
                         alt={images[currentIndex].title}
-                        className={`object-contain ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
+                        className={`object-contain ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'} shadow-2xl rounded-sm`}
                         style={{
                           maxWidth: '100%',
                           maxHeight: '100%',
@@ -652,17 +667,25 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        opacity: activeTransitionClassName === 'transition-fade' ? 1 : 1, // Start visible
                         zIndex: 1,
-                        transform: exitingTransform, // Use the exitingTransform state
+                        transform: exitingTransform,
                         transition: activeTransitionClassName === 'transition-fade' 
                                       ? 'opacity 1s ease-in-out' 
                                       : 'transform 1.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 1.5s ease-in-out'
+                      }}
+                      onTransitionEnd={() => {
+                        if (activeTransitionClassName === 'transition-fade') {
+                          // Ensure opacity is set to 0 after transition
+                          const elem = document.querySelector('.slide.exiting') as HTMLElement;
+                          if (elem) elem.style.opacity = '0';
+                        }
                       }}
                     >
                       <img
                         src={images[previousIndex].src}
                         alt={images[previousIndex].title}
-                        className="object-contain"
+                        className="object-contain shadow-2xl rounded-sm"
                         style={{
                           maxWidth: '100%',
                           maxHeight: '100%',
@@ -692,23 +715,37 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
               <>
                 <button
                   onClick={goToPreviousSlide}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
+                  className="absolute left-6 top-1/2 -translate-y-1/2 p-3 rounded-full backdrop-blur-sm shadow-lg opacity-80 hover:opacity-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/20"
                   style={{ 
-                    backgroundColor: activeTheme.colors[1].hex,
-                    color: `var(--text-on-secondary)`
+                    backgroundColor: `${activeTheme.colors[1].hex}CC`, // Semi-transparent secondary
+                    color: `var(--text-on-secondary)`,
+                    transform: 'translateZ(0)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-50%) translateX(-2px)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-50%) translateX(0)';
                   }}
                 >
-                  <ChevronLeft className="w-8 h-8" />
+                  <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button
                   onClick={memoizedGoToNextSlide}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-secondary text-primary opacity-75 hover:opacity-100 transition-opacity"
+                  className="absolute right-6 top-1/2 -translate-y-1/2 p-3 rounded-full backdrop-blur-sm shadow-lg opacity-80 hover:opacity-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/20"
                   style={{ 
-                    backgroundColor: activeTheme.colors[1].hex,
-                    color: `var(--text-on-secondary)`
+                    backgroundColor: `${activeTheme.colors[1].hex}CC`, // Semi-transparent secondary
+                    color: `var(--text-on-secondary)`,
+                    transform: 'translateZ(0)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-50%) translateX(2px)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-50%) translateX(0)';
                   }}
                 >
-                  <ChevronRight className="w-8 h-8" />
+                  <ChevronRight className="w-6 h-6" />
                 </button>
               </>
             )}
@@ -717,16 +754,16 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
           {/* Bottom Description: Conditionally hidden in immersive mode */}
           {!isImmersiveModeActive && (
             <div
-              className="p-4 bg-secondary text-center flex-shrink-0 border-t"
+              className="py-4 px-6 text-center flex-shrink-0 backdrop-blur-sm"
               style={{ 
-                backgroundColor: activeTheme.colors[1].hex,
+                backgroundColor: `${activeTheme.colors[1].hex}DD`, // More opaque than buttons
                 color: `var(--text-on-secondary)`,
-                borderColor: activeTheme.colors[2].hex
+                borderTop: '1px solid rgba(255,255,255,0.1)'
               }}
             >
               <div className="max-w-4xl mx-auto">
-                <p className="text-lg">{images[currentIndex]?.description || 'Loading description...'}</p>
-                <p className="text-sm mt-2">
+                <p className="text-lg font-medium tracking-tight">{images[currentIndex]?.description || 'Loading description...'}</p>
+                <p className="text-xs mt-2 opacity-80">
                   {images.length > 0 ? `Image ${images.findIndex(img => img.id === images[currentIndex]?.id) + 1} of ${images.length}` : 'No images'}
                 </p>
               </div>

@@ -20,6 +20,7 @@ type ThemeContextType = {
   setActiveTheme: (theme: Theme) => void;
   availableThemes: Theme[];
   addCustomTheme: (theme: Theme) => void;
+  removeTheme: (themeName: string) => void;
   customThemes: Theme[];
 };
 
@@ -29,6 +30,7 @@ const ThemeContext = createContext<ThemeContextType>({
   setActiveTheme: () => {},
   availableThemes: themes,
   addCustomTheme: () => {},
+  removeTheme: () => {},
   customThemes: []
 });
 
@@ -69,6 +71,42 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setCustomThemes(prev => [...prev, theme]);
   };
 
+  // Function to remove a theme (both custom and built-in)
+  const removeTheme = (themeName: string) => {
+    // Check if this is a built-in theme
+    const isBuiltIn = themes.some(t => t.name === themeName);
+    
+    if (isBuiltIn) {
+      // For built-in themes, we don't actually remove them from the themes array
+      // Instead, we'll add them to a "hidden themes" list in localStorage
+      const hiddenThemes: string[] = JSON.parse(localStorage.getItem('hiddenThemes') || '[]');
+      if (!hiddenThemes.includes(themeName)) {
+        hiddenThemes.push(themeName);
+        localStorage.setItem('hiddenThemes', JSON.stringify(hiddenThemes));
+      }
+    } else {
+      // For custom themes, remove them from the customThemes state
+      setCustomThemes(prev => prev.filter(t => t.name !== themeName));
+    }
+    
+    // If this is the active theme, switch to another available theme
+    if (activeTheme.name === themeName) {
+      // Find the first non-hidden theme
+      const hiddenThemes: string[] = JSON.parse(localStorage.getItem('hiddenThemes') || '[]');
+      const availableTheme = [...themes, ...customThemes].find(t => 
+        t.name !== themeName && !hiddenThemes.includes(t.name)
+      );
+      
+      if (availableTheme) {
+        setActiveTheme(availableTheme);
+      } else {
+        // If all themes are hidden/deleted, reset hidden themes and use the first built-in
+        localStorage.setItem('hiddenThemes', '[]');
+        setActiveTheme(themes[0]);
+      }
+    }
+  };
+
   useEffect(() => {
     async function fetchGlobalTheme() {
       try {
@@ -98,6 +136,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setActiveTheme,
         availableThemes: themes,
         addCustomTheme,
+        removeTheme,
         customThemes
       }}
     >
