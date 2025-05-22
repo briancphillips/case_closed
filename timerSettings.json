@@ -1,5 +1,5 @@
 {
   "autoAdvanceInterval": 3000,
-  "navigationThrottleMs": 100,
+  "navigationThrottleMs": 0,
   "transitionPrepareDelayMs": 60
 }

@@ -1,26 +1,26 @@
 {
-  "name": "My Custom Theme",
-  "description": "",
+  "name": "Minimalist Red",
+  "description": "A high-contrast palette of black, white, grays, with a bold red accent.",
   "colors": [
     {
-      "name": "Primary",
-      "hex": "#1f1c2c"
+      "name": "Primary Black",
+      "hex": "#000000"
     },
     {
-      "name": "Secondary",
-      "hex": "#4a4e68"
+      "name": "Primary White",
+      "hex": "#FFFFFF"
     },
     {
-      "name": "Tertiary",
-      "hex": "#9a8d98"
+      "name": "Mid Gray",
+      "hex": "#808080"
     },
     {
-      "name": "Quaternary",
-      "hex": "#c9ada6"
+      "name": "Light Gray",
+      "hex": "#BFBFBF"
     },
     {
-      "name": "Quinary",
-      "hex": "#f5f0e0"
+      "name": "Accent Red",
+      "hex": "#FF0000"
     }
   ]
 }

@@ -67,6 +67,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   // New simplified state for transitions
   const [previousSlide, setPreviousSlide] = useState<Image | null>(null);
   const [transitionStatus, setTransitionStatus] = useState<TransitionStatus>('idle');
+  const [currentDirection, setCurrentDirection] = useState<'next' | 'previous'>('next');
   
   const [activeTransitionClassName, setActiveTransitionClassName] = useState<string>(
     activeTransition?.className || defaultTransition.className
@@ -182,7 +183,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
 
 
   // Refactored Navigation Logic
-  const startTransition = useCallback((newIndex: number) => {
+  const startTransition = useCallback((newIndex: number, direction: 'next' | 'previous') => {
     if (images.length === 0 || transitionStatus !== 'idle') {
       return;
     }
@@ -194,6 +195,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
     }
     lastNavigationTimeRef.current = now;
     
+    setCurrentDirection(direction); // Set the direction
     setTransitionStatus('preparing');
     setPreviousSlide(images[currentIndex] || null); // Store current as previous
     setCurrentIndex(newIndex); // Set new current index
@@ -202,11 +204,11 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   }, [images, currentIndex, transitionStatus, activeTransitionClassName, navigationThrottleMs]);
 
   const memoizedGoToNextSlide = useCallback(() => {
-    startTransition(getNextIndex());
+    startTransition(getNextIndex(), 'next');
   }, [startTransition, getNextIndex]);
 
   const goToPreviousSlide = useCallback(() => {
-    startTransition(getPrevIndex());
+    startTransition(getPrevIndex(), 'previous');
   }, [startTransition, getPrevIndex]);
 
   // Effect to advance transition from 'preparing' to 'active'
@@ -491,15 +493,13 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
         </div>
       ) : (
         <div className="flex flex-col h-screen">
-          {/* Header */}
+          {/* Header - Title removed as per request */}
           {!isImmersiveModeActive && (
             <div 
-              className="px-6 py-4 flex justify-between items-center border-b"
+              className="px-6 py-4 flex justify-end items-center border-b" // Changed to justify-end since title is removed
               style={{ borderColor: 'rgba(255,255,255,0.1)' }}
             >
-              <h1 className="text-xl font-bold">
-                {images[currentIndex] ? images[currentIndex].title : 'Case Closed'}
-              </h1>
+              {/* Title h1 removed */}
               <div className="flex items-center gap-2">
                 <button onClick={toggleStandardFullscreen} title={isBrowserFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}><Maximize size={20} /></button>
                 <button onClick={toggleImmersiveMode} title={isImmersiveModeActive ? "Exit Immersive" : "Enter Immersive"}><Focus size={20} /></button>
@@ -522,7 +522,11 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
                   {images[currentIndex] && (
                     <div
                       key={images[currentIndex].id}
-                      className={`slide slide-current ${activeTransitionClassName} ${
+                      className={`slide slide-current ${ 
+                        activeTransitionClassName === 'transition-slide-left' && currentDirection === 'previous' 
+                          ? 'transition-slide-left-reverse' 
+                          : activeTransitionClassName
+                      } ${ 
                         transitionStatus === 'active'
                           ? 'enter-active'
                           : transitionStatus === 'preparing'
@@ -546,7 +550,11 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
                   {previousSlide && transitionStatus !== 'idle' && (
                     <div
                       key={previousSlide.id}
-                      className={`slide slide-previous ${activeTransitionClassName} ${
+                      className={`slide slide-previous ${ 
+                        activeTransitionClassName === 'transition-slide-left' && currentDirection === 'previous' 
+                          ? 'transition-slide-left-reverse' 
+                          : activeTransitionClassName
+                      } ${ 
                         transitionStatus === 'active'
                           ? 'exit-active'
                           : transitionStatus === 'preparing'
@@ -593,7 +601,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
               className="py-3 px-6 text-center border-t"
               style={{ borderColor: 'rgba(255,255,255,0.1)'}}
             >
-              <p className="text-sm">{images[currentIndex]?.description || '...'}</p>
+              <p className="text-sm">{"Case Closed: From Law Books to Legacy"}</p>
             </div>
           )}
         </div>
