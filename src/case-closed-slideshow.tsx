@@ -57,11 +57,11 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   const [activeTransitionClassName, setActiveTransitionClassName] = useState<string>(
     activeTransition?.className || defaultTransition.className
   );
-  const [previousIndex, setPreviousIndex] = useState<number | null>(null);
+  const [currentDirectionalTransitionClass, setCurrentDirectionalTransitionClass] = useState<string>(
+    activeTransition?.className || defaultTransition.className
+  );
+  const [exitingSlides, setExitingSlides] = useState<Array<{ index: number; key: string; transitionClassName: string }>>([]);
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
-  const [initialTransform, setInitialTransform] = useState<string>('translateX(0%)');
-  const [exitDirection, setExitDirection] = useState<'left' | 'right'>('left');
-  const [exitingTransform, setExitingTransform] = useState<string>('translateX(0%)');
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const slideshowRef = useRef<HTMLDivElement>(null);
@@ -81,6 +81,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   useEffect(() => {
     if (activeTransition?.className) {
       setActiveTransitionClassName(activeTransition.className);
+      setCurrentDirectionalTransitionClass(activeTransition.className);
       console.log("Using provided activeTransition:", activeTransition.name);
     }
   }, [activeTransition]);
@@ -299,29 +300,33 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   // Memoize goToNextSlide to stabilize its reference for useEffect dependency array
   const memoizedGoToNextSlide = useCallback(() => {
     if (images.length === 0) return;
-    setPreviousIndex(currentIndex);
-    setCurrentIndex((prevIndex) => (prevIndex === images.length - 1 ? 0 : prevIndex + 1));
-    setIsTransitioning(true);
-    setExitDirection('left'); // When going next, the previous slide exits to the left
-    setExitingTransform('translateX(0%)'); // Reset exiting transform
-    
-    // Set initial transform based on active transition
+
+    let directionalTransitionClass = activeTransitionClassName;
     if (activeTransitionClassName === 'transition-slide-left') {
-      setInitialTransform('translateX(200%)'); // New slide comes in from the right
-      
-      // Reset transform after a short delay to allow the browser to render the initial position
-      setTimeout(() => {
-        setInitialTransform('translateX(0%)');
-        setExitingTransform('translateX(-200%)'); // Move exiting slide left
-      }, 50);
-    } else if (activeTransitionClassName === 'transition-zoom-in') {
-      setInitialTransform('scale(0.5)');
-      
-      setTimeout(() => {
-        setInitialTransform('scale(1)');
-        setExitingTransform('scale(1.5)'); // Zoom out exiting slide
-      }, 50);
+      directionalTransitionClass = 'transition-slide-left'; // Exits left, new enters from right
     }
+    setCurrentDirectionalTransitionClass(directionalTransitionClass);
+
+    const currentSlideIndexForExit = currentIndex;
+    const newExitingSlideKey = `exiting-${currentSlideIndexForExit}-${Date.now()}`;
+
+    setExitingSlides(prev => [
+      ...prev,
+      { index: currentSlideIndexForExit, key: newExitingSlideKey, transitionClassName: directionalTransitionClass }
+    ]);
+
+    setTimeout(() => {
+      setExitingSlides(prev => prev.filter(s => s.key !== newExitingSlideKey));
+    }, 1500); // Animation duration
+
+    setCurrentIndex((prevIndex) => (prevIndex === images.length - 1 ? 0 : prevIndex + 1));
+    setAnimationKey(prevKey => prevKey + 1);
+    setIsTransitioning(true);
+
+    // Logic for specific transition types (e.g., 'transition-slide-left') is now fully CSS driven for enter/exit
+    // if (activeTransitionClassName === 'transition-slide-left') {
+    // } else if (activeTransitionClassName === 'transition-zoom-in') {
+    // }
   }, [images.length, currentIndex, activeTransitionClassName]);
 
   // Reset auto-advance timer
@@ -343,29 +348,34 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
 
   const goToPreviousSlide = () => {
     if (images.length === 0) return;
-    setPreviousIndex(currentIndex);
-    setCurrentIndex((prevIndex) => (prevIndex === 0 ? images.length - 1 : prevIndex - 1));
-    setIsTransitioning(true);
-    setExitDirection('right'); // When going previous, the previous slide exits to the right
-    setExitingTransform('translateX(0%)'); // Reset exiting transform
-    
-    // Set initial transform based on active transition but in the opposite direction for previous
+
+    let directionalTransitionClass = activeTransitionClassName;
     if (activeTransitionClassName === 'transition-slide-left') {
-      setInitialTransform('translateX(-200%)'); // New slide comes in from the left
-      
-      // Reset transform after a short delay to allow the browser to render the initial position
-      setTimeout(() => {
-        setInitialTransform('translateX(0%)');
-        setExitingTransform('translateX(200%)'); // Move exiting slide right
-      }, 50);
-    } else if (activeTransitionClassName === 'transition-zoom-in') {
-      setInitialTransform('scale(0.5)');
-      
-      setTimeout(() => {
-        setInitialTransform('scale(1)');
-        setExitingTransform('scale(1.5)'); // Zoom out exiting slide
-      }, 50);
+      directionalTransitionClass = 'transition-slide-right'; // Exits right, new enters from left
     }
+    // For other types like zoom/fade, the class remains activeTransitionClassName
+    setCurrentDirectionalTransitionClass(directionalTransitionClass);
+
+    const currentSlideIndexForExit = currentIndex;
+    const newExitingSlideKey = `exiting-${currentSlideIndexForExit}-${Date.now()}`;
+
+    setExitingSlides(prev => [
+      ...prev,
+      { index: currentSlideIndexForExit, key: newExitingSlideKey, transitionClassName: directionalTransitionClass }
+    ]);
+
+    setTimeout(() => {
+      setExitingSlides(prev => prev.filter(s => s.key !== newExitingSlideKey));
+    }, 1500); // Animation duration
+    
+    setCurrentIndex((prevIndex) => (prevIndex === 0 ? images.length - 1 : prevIndex - 1));
+    setAnimationKey(prevKey => prevKey + 1);
+    setIsTransitioning(true);
+
+    // Logic for specific transition types (e.g., 'transition-slide-left') is now fully CSS driven for enter/exit
+    // if (activeTransitionClassName === 'transition-slide-left') {
+    // } else if (activeTransitionClassName === 'transition-zoom-in') {
+    // }
   };
 
   const toggleFullscreen = () => {
@@ -445,10 +455,10 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
   };
 
   // Get transform for a previous image
-  const getPreviousImageTransform = () => {
-    if (previousIndex === null) return 'none';
+  const getPreviousImageTransform = (imageIndex: number | null) => {
+    if (imageIndex === null) return 'none';
     
-    const prevImagePath = images[previousIndex]?.src;
+    const prevImagePath = images[imageIndex]?.src;
     if (!prevImagePath) return 'none';
     
     const normalizedPath = prevImagePath.replace(/^\//, '');
@@ -457,8 +467,8 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
       return `rotate(${manualRotations[normalizedPath]}deg)`;
     }
     
-    if (orientations[previousIndex]) {
-      return getRotationTransform(orientations[previousIndex]);
+    if (orientations[imageIndex]) {
+      return getRotationTransform(orientations[imageIndex]);
     }
     
     return 'none';
@@ -501,7 +511,7 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
     if (isTransitioning) {
       const timer = setTimeout(() => {
         setIsTransitioning(false);
-        setPreviousIndex(null); // Clear previous index after transition
+        // setPreviousIndex(null); // REMOVED: No longer using single previousIndex
       }, 1500); // Match transition duration (1.5s)
       return () => clearTimeout(timer);
     }
@@ -575,8 +585,8 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
                   {/* Current (Incoming) Slide */}
                   {images[currentIndex] && (
                     <div
-                      key={`slide-${currentIndex}`}
-                      className={`slide ${activeTransitionClassName} active`}
+                      key={`slide-${currentIndex}-${animationKey}`}
+                      className={`slide ${currentDirectionalTransitionClass} active`}
                       style={{
                         position: 'absolute',
                         top: 0,
@@ -588,8 +598,6 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
                         justifyContent: 'center',
                         opacity: 1,
                         zIndex: 2,
-                        transform: initialTransform,
-                        transition: 'transform 1.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 1.5s ease-in-out'
                       }}
                     >
                       <img
@@ -610,11 +618,11 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
                     </div>
                   )}
                   
-                  {/* Previous (Exiting) Slide */}
-                  {isTransitioning && previousIndex !== null && images[previousIndex] && (
+                  {/* Exiting Slides */}
+                  {exitingSlides.map(exiting => (
                     <div
-                      key={`slide-${previousIndex}-exiting`}
-                      className={`slide ${activeTransitionClassName} exiting`}
+                      key={exiting.key}
+                      className={`slide ${exiting.transitionClassName} exiting`}
                       style={{
                         position: 'absolute',
                         top: 0,
@@ -624,26 +632,23 @@ const CaseClosedSlideshow: React.FC<CaseClosedSlideshowProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        opacity: exitingTransform === 'translateX(0%)' ? 1 : 0.5, // Keep partially visible during exit
-                        zIndex: 1,
-                        transform: exitingTransform, // Use the exitingTransform state
-                        transition: 'transform 1.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 1.5s ease-in-out'
+                        zIndex: 1, // Exiting slides should be behind active
                       }}
                     >
                       <img
-                        src={images[previousIndex].src}
-                        alt={images[previousIndex].title}
+                        src={images[exiting.index]?.src}
+                        alt={images[exiting.index]?.title}
                         className="object-contain"
                         style={{
                           maxWidth: '100%',
                           maxHeight: '100%',
                           width: 'auto',
                           height: 'auto',
-                          transform: getPreviousImageTransform()
+                          transform: getPreviousImageTransform(exiting.index)
                         }}
                       />
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
               

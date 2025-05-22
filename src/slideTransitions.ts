@@ -17,6 +17,10 @@ export const availableTransitions: SlideTransition[] = [
     className: "transition-slide-left",
   },
   {
+    name: "Slide Right", // For internal use when "Slide Left" is selected and user goes backward
+    className: "transition-slide-right",
+  },
+  {
     name: "Zoom In",
     className: "transition-zoom-in",
   },

@@ -92,6 +92,94 @@ body {
   }
 }
 
+@keyframes fadeInSimple {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOutSimple {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Updated for "Next" button - Enters from Right */
+@keyframes slideLeftEnterNext {
+  from {
+    transform: translateX(100%);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0%);
+    opacity: 1;
+  }
+}
+
+/* Updated for "Next" button - Exits to Left */
+@keyframes slideLeftExitNext {
+  from {
+    transform: translateX(0%);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+/* Added for "Previous" button - Enters from Left */
+@keyframes slideRightEnterPrev {
+  from {
+    transform: translateX(-100%);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0%);
+    opacity: 1;
+  }
+}
+
+/* Added for "Previous" button - Exits to Right */
+@keyframes slideRightExitPrev {
+  from {
+    transform: translateX(0%);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes zoomInEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes zoomInExit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
 .image-slide-transition {
   width: 100%;
   height: 100%;
@@ -164,35 +252,56 @@ body {
 }
 
 /* Fade Transition */
+.transition-fade.slide {
+  opacity: 0; /* Initial state */
+  transition: none; /* Override base slide transition */
+}
 .transition-fade.slide.active {
-  opacity: 1;
+  animation: fadeInSimple 1s ease-in-out forwards;
 }
 .transition-fade.slide.exiting {
-  opacity: 0;
+  animation: fadeOutSimple 1s ease-in-out forwards;
 }
 
-/* Slide Left Transition */
+/* Slide Left Transition (used for NEXT) */
 .transition-slide-left.slide {
-  opacity: 0;
-  transition: transform 1.5s cubic-bezier(0.33, 1, 0.68, 1),
-    opacity 1.5s ease-in-out;
+  opacity: 0; /* Initial state before active/exiting applies animation */
+  transition: none; /* Override base slide transition */
 }
 .transition-slide-left.slide.active {
-  opacity: 1;
+  animation: slideLeftEnterNext 1.5s cubic-bezier(0.33, 1, 0.68, 1) forwards;
 }
 .transition-slide-left.slide.exiting {
-  opacity: 0;
+  animation: slideLeftExitNext 1.5s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+/* Slide Right Transition (used for PREVIOUS when 'Slide Left' is selected) */
+.transition-slide-right.slide {
+  opacity: 0; /* Initial state before active/exiting applies animation */
+  transition: none; /* Override base slide transition */
+}
+.transition-slide-right.slide.active {
+  animation: slideRightEnterPrev 1.5s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+.transition-slide-right.slide.exiting {
+  animation: slideRightExitPrev 1.5s cubic-bezier(0.33, 1, 0.68, 1) forwards;
 }
 
 /* Zoom In Transition */
 .transition-zoom-in.slide {
-  opacity: 0;
-  transition: transform 1.5s cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity 1.5s ease-in-out;
+  opacity: 0; /* Initial state before animation */
+  transition: none; /* Override base slide transition */
+  /* Remove transition, will be handled by animation property */
 }
 .transition-zoom-in.slide.active {
-  opacity: 1;
+  /* opacity: 1; Ensure opacity is 1 at the end of the animation */
+  animation: zoomInEnter 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  /* transform: scale(1); Ensure final transform is correct */
 }
 .transition-zoom-in.slide.exiting {
-  opacity: 0;
+  /* opacity: 0; Ensure opacity is 0 at the end of the animation */
+  animation: zoomInExit 1.5s ease-in-out forwards;
+  /* transform: scale(1.5); Ensure final transform is correct, though animation handles it */
 }
+
+/* THE FOLLOWING DUPLICATED/OLD RULES WILL BE REMOVED */

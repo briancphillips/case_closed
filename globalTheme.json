@@ -1,26 +1,26 @@
 {
-  "name": "Red Velvet",
-  "description": "",
+  "name": "Mystery Noir",
+  "description": "Dramatic black and white palette with vivid accent colors",
   "colors": [
     {
-      "name": "Primary",
-      "hex": "#d60032"
+      "name": "Detective Black",
+      "hex": "#171717"
     },
     {
-      "name": "Secondary",
-      "hex": "#ff3d5a"
+      "name": "Evidence White",
+      "hex": "#EDEDED"
     },
     {
-      "name": "Tertiary",
-      "hex": "#ff7092"
+      "name": "Clue Red",
+      "hex": "#DA0037"
     },
     {
-      "name": "Quaternary",
-      "hex": "#000000"
+      "name": "Sleuth Silver",
+      "hex": "#AAAAAA"
     },
     {
-      "name": "Quinary",
-      "hex": "#7a7a7a"
+      "name": "Secret Purple",
+      "hex": "#590D82"
     }
   ]
 }
