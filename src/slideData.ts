@@ -1,15 +1,15 @@
 export const imageFileNames: string[] = [
-  "Image_01.png", "Image_02.png", "Image_03.png", "Image_04.png", "Image_05.png",
+  "case_closed.png","Image_01.png", "Image_02.png", "Image_03.png", "Image_04.png", "Image_05.png",
   "Image_06.png", "Image_07.png", "Image_08.png", "Image_09.png", "Image_10.png",
   "Image_11.png", "Image_12.png", "Image_13.png", "Image_14.png", "Image_15.png",
   "Image_16.png", "Image_17.png", "Image_18.png", "Image_19.png", "Image_20.png",
   "Image_21.png", "Image_22.png", "Image_23.png", "Image_24.png", "Image_25.png",
-  "Image_26.png", "Image_27.png", "Image_28.png", "Image_29.png", "Image_30.png",
+  "Image_26.png", "Image_28.png", "Image_29.png", "Image_30.png",
   "Image_31.png", "Image_32.png", "Image_33.png", "Image_34.png", "Image_35.png",
   "Image_36.png", "Image_37.png", "Image_38.png", "Image_39.png", "Image_40.png",
   "Image_41.png", "Image_42.png", "Image_43.png", "Image_44.png", "Image_45.png",
   "Image_46.png", "Image_47.png", "Image_48.png", "Image_49.png", "Image_50.png",
   "Image_51.png", "Image_52.png", "Image_53.png", "Image_54.png", "Image_55.png",
   "Image_56.png", "Image_57.png", "Image_58.png", "Image_59.png", "Image_60.png",
-  "Image_61.png", "Image_62.png"
+  "Image_61.png", "Image_62.png","Image_63.png","Image_64.png","Image_65.png",  
 ];
